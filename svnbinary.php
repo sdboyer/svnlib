@@ -252,7 +252,7 @@ abstract class SvnCommand implements CLICommand {
    */
   public function setDefaults() {
     $this->internalSwitches |= self::PARSE_OUTPUT;
-    $this->cmdSwitches |= self::XML;
+    $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
     if (isset($this->parserClass)) {
       $this->setParserClass($this->parserClass);
     }
