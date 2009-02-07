@@ -321,24 +321,38 @@ abstract class SvnCommand implements CLICommand {
 
   }
 
-/*  public function targetFile($path) {
+  public function toggleSwitch($bits) {
+    $this->cmdSwitches ^= $bits;
+    return $this;
+  }
+
+  public function targets($path) {
     if (!is_file($path)) {
       throw new Exception("'$path' is not a file, but was passed to `svn info --targets`.", E_ERROR);
     }
-    $this->cmdSwitches |= self::TARGETFILE;
-    $this->args[self::TARGETFILE] = $path;
+    $this->cmdOpts[self::TARGETS] = $path;
     return $this;
-  }*/
+  }
 
 /*  public function recursive($arg = TRUE) {
     if ($arg) {
-      $this->args[self::DEPTH] = 'infinity';
+      $this->cmdOpts[self::DEPTH] = 'infinity';
     }
     else {
       $this->cmdOpts[self::DEPTH] = 'empty';
     }
     return $this;
   }*/
+
+  public function verbose() {
+    $this->cmdSwitches ^= self::VERBOSE;
+    return $this;
+  }
+
+  public function quiet() {
+    $this->cmdSwitches ^= self::QUIET;
+    return $this;
+  }
 
   /**
    * Toggle the `--xml` switch on or off.
@@ -434,6 +448,10 @@ abstract class SvnOpt implements CLICommandOpt {
   public function __construct(SvnCommand &$sc) {
     $this->sc = &$sc;
   }
+
+  public function getOrdinal() {
+    return self::ORDINAL;
+  }
 }
 
 class SvnOptRevision extends SvnOpt {
@@ -524,10 +542,6 @@ class SvnOptTarget extends SvnOpt {
     $this->target = $target;
   }
 
-  public function getOrdinal() {
-    return SvnCommand::TARGET;
-  }
-
   public function revision($rev) {
     if (!is_int($rev)) {
       throw new Exception('Non-integer revision argument, "' . $rev . '" passed to SvnOptTarget.', E_ERROR);
@@ -542,26 +556,20 @@ class SvnOptTarget extends SvnOpt {
   }
 }
 
-/**
- * Class that handles invocation of `svn info`.
- * @author sdboyer
- *
- */
-class SvnInfo extends SvnCommand {
-
-  protected $command = 'info';
-  public $parserClass = 'SvnInfoParser';
-  // protected $target = array();
-
-  public function revision($arg1) {
-/*    if (!is_null($arg2)) {
-      throw new Exception('`svn info` can take only a single revision argument, not a revision range. The second argument will be ignored.', E_WARNING);
-    }*/
-    $this->args[self::REVISION] = new SvnOptRevision($this, $arg1);
+abstract class SvnRead extends SvnCommand {
+  public function revision($rev1, $rev2 = NULL) {
+    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $rev1);
+    if (!is_null($rev2)) {
+      $this->cmdOpts[self::REVISION]->range($rev2);
+    }
     return $this;
   }
 
   public function target($target, $rev = NULL) {
+/*    if (!$this->cmdOpts[self::TARGET] instanceof SplObjectMap) {
+      $this->cmdOpts[self::TARGET] = new SplObjectMap();
+    }*/
+
     $target = new SvnOptTarget($this, $target);
     if (!is_null($rev)) {
       $target->revision($rev);
@@ -569,14 +577,48 @@ class SvnInfo extends SvnCommand {
     $this->cmdOpts[self::TARGET][] = $target;
     return $this;
   }
+
+  public function targets($file) {
+
+  }
+}
+
+/**
+ * Class that handles invocation of `svn info`.
+ * @author sdboyer
+ *
+ */
+class SvnInfo extends SvnCommand {
+  protected $command = 'info';
+  public $parserClass = 'SvnInfoParser';
+  // protected $target = array();
+
+  public function revision($rev1, $rev2 = NULL) {
+    if (!is_null($arg2)) {
+      throw new Exception('`svn info` can take only a single revision argument, not a revision range. The second argument will be ignored.', E_WARNING);
+    }
+    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $arg1);
+    return $this;
+  }
+}
+
+class SvnLog extends SvnCommand {
+  const WITH_ALL_REVPROPS = 0x10000;
+  protected $command = 'log';
+  public $parserClass = 'SvnInfoParser';
+
+  public function revision($arg1, $arg) {
+
+  }
+
+  public function stopOnCopy() {
+    $this->cmdSwitches ^= self::STOP_ON_COPY;
+  }
+
 }
 
 class SvnStatus {
   const SHOW_UPDATES = '';
-}
-
-class SvnLog {
-  const WITH_ALL_REVPROPS = '';
 }
 
 class SvnMerge {
