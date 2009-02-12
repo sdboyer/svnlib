@@ -1,5 +1,13 @@
 <?php
 
+/**
+ * @file svn.opts.inc
+ *
+ * Class definitions for svn command opts (command line parameters that take
+ * arguments). Note that, under the circumstances envisioned by the author,
+ * these will only ever be used internally. There is no way to attach them
+ * directly to an SvnCommand object from outside the object.
+ */
 
 /**
  * Parent class for opts that can be used by various Subversion `svn` subcommands.
@@ -7,45 +15,54 @@
  *
  */
 abstract class SvnOpt implements CLICommandOpt {
-  public function __construct(SvnCommand &$sc) {
+  protected $arg = '';
+
+  public function __construct(SvnCommand &$sc, $arg) {
     $this->sc = &$sc;
+    if (method_exists($this, 'checkArg')) {
+      if ($this->checkArg($arg)) {
+        $this->arg = $arg;
+      }
+    }
+    else {
+      $this->arg = $arg;
+    }
   }
 
   public function getOrdinal() {
     return self::ORDINAL;
   }
+
+  public function getShellString() {
+    return $this->opt . escapeshellarg($this->arg);
+  }
 }
 
 class SvnOptRevision extends SvnOpt {
-  protected $arg1 = '', $arg2 = '';
+  const ORDINAL = 1;
 
-  public function __construct(SvnCommand &$sc, $rev) {
-    parent::__construct($sc);
-    if (self::checkArg($rev)) {
-      $this->arg1 = $rev;
-    }
-  }
+  protected $arg2 = '', $opt = '-r ';
 
   public function range($rev) {
-    if (self::checkArg($rev)) {
+    if ($this->checkArg($rev)) {
       $this->arg2 = $rev;
     }
     return $this;
   }
 
-  public static function checkArg($arg) {
+  protected function checkArg($arg) {
     if (!is_int($arg)) {
       // FIXME currently does not allow date-based revision range args
       if (!in_array($arg, array('HEAD', 'BASE', 'COMMITTED', 'PREV'))) {
-        throw new Exception("Invalid revision information passed as an argument to SvnOptRevision", E_ERROR);
-        // return FALSE;
+        throw new Exception("Invalid revision information passed as an argument to SvnOptRevision", E_RECOVERABLE_ERROR);
+        return FALSE;
       }
     }
     return TRUE;
   }
 
   public function getShellString() {
-    $string = '-r ' . escapeshellarg($this->arg1);
+    $string = $this->opt . escapeshellarg($this->arg);
     if (!empty($this->arg2)) {
       $string .= ':' . escapeshellarg($this->arg2);
     }
@@ -54,54 +71,63 @@ class SvnOptRevision extends SvnOpt {
 }
 
 class SvnOptAccept extends SvnOpt  {
-  public function build() {
+  const ORDINAL = 2;
 
-  }
+  protected $opt = '--accept ';
 
-  public function getShellString() {
-    return '-r';
+  protected function checkArg($arg) {
+    if (!in_array($arg, array('base', 'working', 'mine-full', 'theirs-full'))) {
+      throw new Exception("Invalid argument '$arg' passed to SvnOptAccept", E_RECOVERABLE_ERROR);
+      return FALSE;
+    }
+    return TRUE;
   }
 }
 
 class SvnOptDepth extends SvnOpt {
+  const ORDINAL = 3;
 
-  public function __construct(SvnCommand $sc, $arg) {
-    parent::__construct($sc, $arg);
+  protected $opt = '--depth ';
+
+  public function __construct(SvnCommand &$sc, $arg) {
+    parent::__construct($sc);
     if (in_array($arg, array('infinity', 'files', 'immediates', 'empty'))) {
       $this->arg = $arg;
     }
   }
 
-  public function getShellString() {
+/*  public function getShellString() {
     return '--depth=' . $this->arg;
-  }
+  }*/
 }
 
 class SvnOptTargets extends SvnOpt {
+  const ORDINAL = 4;
 
-  public function getShellString() {
-
+  public function checkArg($arg) {
+    if (!is_file($arg)) {
+      throw new Exception('Non-file argument passed to SvnOptTargets.', E_RECOVERABLE_ERROR);
+      return FALSE;
+    }
+    return TRUE;
   }
 }
 
 class SvnOptTarget extends SvnOpt {
-  protected $target = '', $rev = FALSE;
+  const ORDINAL = 5;
 
-  public function __construct(SvnCommand $sc, $target) {
-    parent::__construct($sc);
-    $this->target = $target;
-  }
+  protected $rev = FALSE;
 
   public function revision($rev) {
     if (!is_int($rev)) {
-      throw new Exception('Non-integer revision argument, "' . $rev . '" passed to SvnOptTarget.', E_ERROR);
+      throw new Exception('Non-integer revision argument, "' . $rev . '" passed to SvnOptTarget.', E_RECOVERABLE_ERROR);
     }
     $this->rev = $rev;
     return $this;
   }
 
   public function getShellString() {
-    $string = $this->rev === FALSE ? $this->target : $this->target . '@' . $this->rev;
-    return $string;
+    $string = escapeshellarg($this->arg);
+    return ($this->rev === FALSE) ?  $string : $string . '@' . escapeshellarg($this->rev);
   }
 }
