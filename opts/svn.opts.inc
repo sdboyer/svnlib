@@ -58,10 +58,6 @@ class SvnOptAccept extends SvnOpt  {
 
   }
 
-  public function process() {
-
-  }
-
   public function getShellString() {
     return '-r';
   }
@@ -76,20 +72,12 @@ class SvnOptDepth extends SvnOpt {
     }
   }
 
-  public function process() {
-
-  }
-
   public function getShellString() {
     return '--depth=' . $this->arg;
   }
 }
 
 class SvnOptTargets extends SvnOpt {
-
-  public function process() {
-
-  }
 
   public function getShellString() {
 
