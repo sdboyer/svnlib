@@ -33,12 +33,12 @@ class SvnWorkingCopy extends SplFileInfo {
   // const BIN_SVN     = 0x001; // only necessary if there are multiple binaries we might invoke on the working copy
 
   protected $cmd;
-  public $invocations, $retContainer;
+  public $invocations, $cmdContainer, $retContainer;
 
   public function __construct($path) {
     parent::__construct($path);
     if (!is_dir("$path/.svn")) {
-      throw new Exception("$path is not an svn working copy directory, as it contains no svn metadata.", E_ERROR);
+      throw new Exception("$path is not an svn working copy directory, as it contains no svn metadata.", E_RECOVERABLE_ERROR);
     }
     $this->retContainer = new SplObjectMap();
     $this->cmdContainer = new SplObjectMap();
@@ -55,6 +55,20 @@ class SvnWorkingCopy extends SplFileInfo {
   public function newInvocation($defaults = TRUE) {
     $this->cmd = new SvnInfo($this, $defaults);
     return $this->cmd;
+  }
+}
+
+class SvnRepository extends SplFileInfo {
+  protected $cmd;
+  public $invocations, $retContainer, $cmdContainer;
+
+  public function __construct($path) {
+    parent::__construct($path);
+    // Run a low-overhead operation, verifying this is a working svn repository.
+    system('svnadmin lstxns ' . $path, $exit);
+    if ($exit) {
+      throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
+    }
   }
 }
 
