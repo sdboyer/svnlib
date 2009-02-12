@@ -1,5 +1,9 @@
 <?php
 
+// TODO temporary straight includes until a smarter system is introduced
+require_once __FILE__ . '/commands/svn.commands.inc';
+require_once __FILE__ . '/opts/svn.opts.inc';
+
 /*interface CLI {
   const IS_SWITCH = 0x0001;
   public function getVersion();
