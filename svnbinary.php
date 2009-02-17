@@ -21,6 +21,21 @@ interface CLICommandOpt {
 }
 
 /**
+ * Abstract class that allows for commands that can be used on both an svn repo
+ * and working copy to be handled via inheritance.
+ * @author sdboyer
+ *
+ */
+abstract class SvnInstance extends SplFileInfo {
+  public function __construct($path) {
+    parent::__construct($path);
+    $this->retContainer = new SplObjectMap();
+    $this->cmdContainer = new SplObjectMap();
+    $this->invocations = new SplObjectMap();
+  }
+}
+
+/**
  * Class for managing the root of an Subversion working copy.
  *
  * Once created, it can spawn various invocations of the svn command-line
@@ -29,20 +44,17 @@ interface CLICommandOpt {
  * @author sdboyer
  *
  */
-class SvnWorkingCopy extends SplFileInfo {
+class SvnWorkingCopy extends SvnInstance {
   // const BIN_SVN     = 0x001; // only necessary if there are multiple binaries we might invoke on the working copy
 
   protected $cmd;
   public $invocations, $cmdContainer, $retContainer;
 
   public function __construct($path) {
-    parent::__construct($path);
     if (!is_dir("$path/.svn")) {
       throw new Exception("$path is not an svn working copy directory, as it contains no svn metadata.", E_RECOVERABLE_ERROR);
     }
-    $this->retContainer = new SplObjectMap();
-    $this->cmdContainer = new SplObjectMap();
-    $this->invocations = new SplObjectMap();
+    parent::__construct($path);
   }
 
   /**
@@ -58,17 +70,17 @@ class SvnWorkingCopy extends SplFileInfo {
   }
 }
 
-class SvnRepository extends SplFileInfo {
+class SvnRepository extends SvnInstance {
   protected $cmd;
   public $invocations, $retContainer, $cmdContainer;
 
   public function __construct($path) {
-    parent::__construct($path);
     // Run a low-overhead operation, verifying this is a working svn repository.
     system('svnadmin lstxns ' . $path, $exit);
     if ($exit) {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
+    parent::__construct($path);
   }
 }
 
