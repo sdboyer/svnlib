@@ -76,7 +76,7 @@ class SvnRepository extends SvnInstance {
 
   public function __construct($path) {
     // Run a low-overhead operation, verifying this is a working svn repository.
-    system('svnadmin lstxns ' . $path, $exit);
+    system('svnadmin lstxns ' . escapeshellarg($path), $exit);
     if ($exit) {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
