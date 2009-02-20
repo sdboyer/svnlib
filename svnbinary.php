@@ -27,12 +27,28 @@ interface CLICommandOpt {
  *
  */
 abstract class SvnInstance extends SplFileInfo {
-  public function __construct($path) {
+  protected $defaults = TRUE;
+  protected $path;
+  protected $cmd;
+  public $invocations, $cmdContainer, $retContainer;
+
+  public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
+    $this->path = $path;
+    if ($verify) {
+      $this->verify();
+    }
     $this->retContainer = new SplObjectMap();
     $this->cmdContainer = new SplObjectMap();
     $this->invocations = new SplObjectMap();
   }
+
+  public function defaults($use = TRUE) {
+    $this->defaults = $use;
+    return $this;
+  }
+
+  abstract public function verify();
 }
 
 /**
@@ -45,42 +61,30 @@ abstract class SvnInstance extends SplFileInfo {
  *
  */
 class SvnWorkingCopy extends SvnInstance {
-  // const BIN_SVN     = 0x001; // only necessary if there are multiple binaries we might invoke on the working copy
 
-  protected $cmd;
-  public $invocations, $cmdContainer, $retContainer;
-
-  public function __construct($path) {
-    if (!is_dir("$path/.svn")) {
-      throw new Exception("$path is not an svn working copy directory, as it contains no svn metadata.", E_RECOVERABLE_ERROR);
+  public function verify() {
+    if (!is_dir("$this->path/.svn")) {
+      throw new Exception("$this->path is not an svn working copy directory, as it contains no svn metadata.", E_RECOVERABLE_ERROR);
     }
-    parent::__construct($path);
   }
 
-  /**
-   * Total hack right now, made-up passthrough that just points straight to an
-   * svn info
-   *
-   * FIXME probably gonna screw this whole approach and make methods for each
-   * subcommand, b/c this blows
-   */
-  public function newInvocation($defaults = TRUE) {
-    $this->cmd = new SvnInfo($this, $defaults);
-    return $this->cmd;
+  public function svnInfo($defaults = NULL) {
+    $this->cmd = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
+  }
+
+  public function svnLog($defaults = NULL) {
+    $this->cmd = new SvnLog($this, is_null($defaults) ? $this->defaults : $defaults);
   }
 }
 
 class SvnRepository extends SvnInstance {
-  protected $cmd;
-  public $invocations, $retContainer, $cmdContainer;
 
-  public function __construct($path) {
-    // Run a low-overhead operation, verifying this is a working svn repository.
+  public function verify() {
+    // Run a fast, low-overhead operation, verifying this is a working svn repository.
     system('svnadmin lstxns ' . escapeshellarg($path), $exit);
     if ($exit) {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
-    parent::__construct($path);
   }
 }
 
@@ -92,7 +96,7 @@ class SvnlookCLI {
 */
 
 $wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
-$info = $wc->newInvocation(FALSE);
+$info = $wc->svnInfo(FALSE);
 $info->internalSwitches |= SvnCommand::PARSE_OUTPUT;
 $info->xml();
 $info->setParserClass('SvnInfoParser');
