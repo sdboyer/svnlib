@@ -88,28 +88,3 @@ class SvnRepository extends SvnInstance {
     }
   }
 }
-
-$wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
-$info = $wc->svnInfo(FALSE);
-$info->internalSwitches |= SvnCommand::PARSE_OUTPUT;
-$info->xml();
-$info->setParserClass('SvnInfoParser');
-$info->target('index.php', 328);
-$it = $info->execute();
-/*
- * Thee preceding five lines, aside from setting the flag, could just as easily have been:
- *    $it = $wc->newInvocation(FALSE)->xml()->setParserClass('SvnInfoParser')->target('index.php', 328)->execute();
- *
- * And the xml() and setParserClass() are only there as an illustration; they're set by default, if I hadn't passed FALSE to SvnWorkingCopy::newInvocation:
- *    $it = newInvocation()->target('index.php', 328)->execute();
- *
- * For a lot of purposes, though, it may not be a good idea to bypass getting a copy of the SvnCommand object outside,
- * b/c with the way SplObjectMap works, you need the object to reference the contents of the arrays
- *
- */
-foreach ($it as $key => $item) {
-  echo $key;
-  print_r($item);
-}
-
-$i = 'break on me';

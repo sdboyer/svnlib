@@ -38,7 +38,6 @@ class SvnInfoXMLParser extends SimpleXMLIterator {
     $item['created_rev'] = intval((string) $entry->commit['revision']); // last edit
     $item['last_author'] = (string) $entry->commit->author;
     $item['time_t'] = strtotime((string) $entry->commit->date);
-    // $i = 'break on me';
     return $item;
   }
 
@@ -82,5 +81,3 @@ class SvnLogXMLParser extends SimpleXMLIterator {
     return FALSE;
   }
 }
-
-
