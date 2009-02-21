@@ -81,3 +81,6 @@ class SvnLogXMLParser extends SimpleXMLIterator {
   public function hasChildren() {
     return FALSE;
   }
+}
+
+
