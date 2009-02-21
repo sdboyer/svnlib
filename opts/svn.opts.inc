@@ -16,6 +16,7 @@
  */
 abstract class SvnOpt implements CLICommandOpt {
   protected $arg = '';
+  protected $concatenator = ' ';
 
   public function __construct(SvnCommand &$sc, $arg) {
     $this->sc = &$sc;
@@ -34,14 +35,14 @@ abstract class SvnOpt implements CLICommandOpt {
   }
 
   public function getShellString() {
-    return $this->opt . escapeshellarg($this->arg);
+    return $this->opt . $this->concatenator . escapeshellarg($this->arg);
   }
 }
 
 class SvnOptRevision extends SvnOpt {
   const ORDINAL = 1;
 
-  protected $arg2 = '', $opt = '-r ';
+  protected $arg2 = '', $opt = '-r';
 
   public function range($rev) {
     if ($this->checkArg($rev)) {
@@ -86,8 +87,8 @@ class SvnOptAccept extends SvnOpt  {
 
 class SvnOptDepth extends SvnOpt {
   const ORDINAL = 3;
-
-  protected $opt = '--depth ';
+  protected $concatenator = '=';
+  protected $opt = '--depth';
 
   public function __construct(SvnCommand &$sc, $arg) {
     parent::__construct($sc);
@@ -95,14 +96,12 @@ class SvnOptDepth extends SvnOpt {
       $this->arg = $arg;
     }
   }
-
-/*  public function getShellString() {
-    return '--depth=' . $this->arg;
-  }*/
 }
 
 class SvnOptTargets extends SvnOpt {
   const ORDINAL = 4;
+  protected $concatenator = '=';
+  protected $opt = '--targets';
 
   public function checkArg($arg) {
     if (!is_file($arg)) {
@@ -115,7 +114,6 @@ class SvnOptTargets extends SvnOpt {
 
 class SvnOptTarget extends SvnOpt {
   const ORDINAL = 5;
-
   protected $rev = FALSE;
 
   public function revision($rev) {
