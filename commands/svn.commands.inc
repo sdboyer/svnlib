@@ -11,6 +11,7 @@ abstract class SvnCommand implements CLICommand {
   // internal state switches
   const PARSE_OUTPUT  = 0x001;
   const PREPARED      = 0x002;
+  const CACHE_OUTPUT  = 0x004;
 
   // opts
   const AUTH          = 1;
@@ -31,22 +32,23 @@ abstract class SvnCommand implements CLICommand {
   const TARGET        = 12;
 
   // cli switches
-  const VERBOSE           = 0x0001;
-  const INCREMENTAL       = 0x0002;
-  const XML               = 0x0004;
-  const FORCE             = 0x0008;
-  const DRY_RUN           = 0x0010;
-  const STOP_ON_COPY      = 0x0020;
-  const USE_MERGE_HISTORY = 0x0040;
-  const REVPROP           = 0x0080;
-  const QUIET             = 0x0100;
-  const PARENTS           = 0x0200;
-  const NO_IGNORE         = 0x0400;
-  const USE_ANCESTRY      = 0x0800; // represents two switches
-  const IGNORE_EXTERNALS  = 0x1000;
-  const AUTO_PROPS        = 0x2000;
-  const NO_AUTH_CACHE     = 0x4000;
-  const NON_INTERACTIVE   = 0x8000;
+  const VERBOSE           = 0x00001;
+  const INCREMENTAL       = 0x00002;
+  const XML               = 0x00004;
+  const FORCE             = 0x00008;
+  const FORCE_LOG         = 0x00010;
+  const DRY_RUN           = 0x00020;
+  const STOP_ON_COPY      = 0x00040;
+  const USE_MERGE_HISTORY = 0x00080;
+  const REVPROP           = 0x00100;
+  const QUIET             = 0x00200;
+  const PARENTS           = 0x00400;
+  const NO_IGNORE         = 0x00800;
+  const USE_ANCESTRY      = 0x01000; // represents two switches
+  const IGNORE_EXTERNALS  = 0x02000;
+  const AUTO_PROPS        = 0x04000;
+  const NO_AUTH_CACHE     = 0x08000;
+  const NON_INTERACTIVE   = 0x10000;
 
 /*  protected $optInfo = array(
     self::ACCEPT => array(
@@ -97,6 +99,9 @@ abstract class SvnCommand implements CLICommand {
     ),
     self::FORCE => array(
       'shell string' => '--force',
+    ),
+    self::FORCE_LOG => array(
+      'shell string' => '--force-log',
     ),
     self::DRY_RUN => array(
       'shell string' => '--dry-run',
@@ -179,7 +184,7 @@ abstract class SvnCommand implements CLICommand {
    */
   public function setParserClass($class) {
     if (!class_exists($class)) {
-      throw new Exception('Nonexistent parser class provided.', E_ERROR);
+      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_ERROR);
     }
     else if ($this->internalSwitches & self::PARSE_OUTPUT) {
       $this->parser = new ReflectionClass($class);
@@ -215,8 +220,8 @@ abstract class SvnCommand implements CLICommand {
     }
 
     $this->procOpen();
-    if ($err = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $err, E_RECOVERABLE_ERROR);
+    if ($this->wc->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
+      throw new Exception('svn failed with the following message: ' . $err, E_WARNING);
       return;
     }
 
@@ -263,8 +268,13 @@ abstract class SvnCommand implements CLICommand {
 
   }
 
-  public function toggleSwitch($bits) {
-    $this->cmdSwitches ^= $bits;
+  public function depth($arg) {
+    if (!isset($this->cmdOpts[self::DEPTH])) {
+      $this->cmdOpts[self::DEPTH] = new SvnOptDepth($arg);
+    }
+    else {
+      $this->cmdOpts[self::DEPTH]->changeArg($arg);
+    }
     return $this;
   }
 
@@ -273,24 +283,12 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
-/*  public function recursive($arg = TRUE) {
-    if ($arg) {
-      $this->cmdOpts[self::DEPTH] = 'infinity';
-    }
-    else {
-      $this->cmdOpts[self::DEPTH] = 'empty';
-    }
-    return $this;
-  }*/
-
-  public function verbose() {
-    $this->switchChange($arg, self::VERBOSE);
-    return $this;
+  public function recursive() {
+    return $this->depth('infinity');
   }
 
-  public function quiet() {
-    $this->switchChange($arg, self::QUIET);
-    return $this;
+  public function nonRecursive() {
+    return $this->depth('none');
   }
 
   protected function switchChange($arg, $switch) {
@@ -300,6 +298,21 @@ abstract class SvnCommand implements CLICommand {
     else {
       $this->cmdSwitches ^= ($this->cmdSwitches & $switch) ? $switch : 0;
     }
+  }
+
+  public function toggleSwitches($bits) {
+    $this->cmdSwitches ^= $bits;
+    return $this;
+  }
+
+  public function verbose() {
+    $this->switchChange($arg, self::VERBOSE);
+    return $this;
+  }
+
+  public function quiet() {
+    $this->switchChange($arg, self::QUIET);
+    return $this;
   }
 
   /**
@@ -317,6 +330,31 @@ abstract class SvnCommand implements CLICommand {
    */
   public function incremental($arg = TRUE) {
     $this->switchChange($arg, self::INCREMENTAL);
+    return $this;
+  }
+
+  public function force($arg = TRUE) {
+    $this->switchChange($arg, self::FORCE);
+    return $this;
+  }
+
+  public function forceLog($arg = TRUE) {
+    $this->switchChange($arg, self::DRY_RUN);
+    return $this;
+  }
+
+  public function noIgnore($arg = TRUE) {
+    $this->switchChange($arg, self::NO_IGNORE);
+    return $this;
+  }
+
+  public function autoProps($arg = TRUE) {
+    $this->switchChange($arg, self::AUTO_PROPS);
+    return $this;
+  }
+
+  public function parents($arg = TRUE) {
+    $this->switchChange($arg, self::PARENTS);
     return $this;
   }
 
@@ -345,10 +383,10 @@ abstract class SvnCommand implements CLICommand {
     }
     ksort($this->cmds);
 
-    $opts = array();
+    $opts = new SplObjectMap();
     $this->processOpts($opts, $this->cmdOpts);
-    ksort($opts);
-    $this->cmds = array_merge($this->cmds, $opts);
+    uasort($opts, '_svnlib_sort_opts');
+    $this->cmds = array_merge($this->cmds, array_values($opts));
 
     array_unshift($this->cmds, 'svn', $this->command);
     return $fluent ? $this : $this->cmds;
@@ -369,7 +407,7 @@ abstract class SvnCommand implements CLICommand {
       }
     }
     else {
-      $opts[$arg->getOrdinal()] = $arg->getShellString();
+      $opts[$arg] = $arg->getShellString();
     }
   }
 
@@ -391,6 +429,14 @@ abstract class SvnCommand implements CLICommand {
   }
 }
 
+
+abstract class SvnWrite extends SvnCommand {
+
+  public function dryRun($arg = TRUE) {
+    $this->switchChange($arg, self::DRY_RUN);
+    return $this;
+  }
+}
 
 abstract class SvnRead extends SvnCommand {
 
@@ -436,7 +482,7 @@ class SvnInfo extends SvnRead {
 }
 
 class SvnLog extends SvnRead {
-  const WITH_ALL_REVPROPS = 0x10000;
+  const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
   public $parserClass = 'SvnInfoParser';
 
@@ -481,4 +527,8 @@ class SvnDelete {
   );
 
   const KEEP_LOCAL = 20;
+}
+
+function _svnlib_sort_opts($a, $b) {
+  return $a->getOrdinal() - $b->getOrdinal();
 }
