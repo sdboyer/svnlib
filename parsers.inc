@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * Pure stream-based parsers.
+ */
+
+
+
+/**
+ * XML-based parsers.
+ */
 
 /**
  * A class specifically tailored to parse the incremental xml output of an
@@ -8,7 +17,7 @@
  * @author sdboyer
  *
  */
-class SvnInfoParser extends SimpleXMLIterator {
+class SvnInfoXMLParser extends SimpleXMLIterator {
 
   public function current() {
     $entry = parent::current();
@@ -35,9 +44,40 @@ class SvnInfoParser extends SimpleXMLIterator {
 
   /**
    * Override the parent implementation and always return FALSE on hasChildren,
-   * because we know that we never want or need to recurse.
+   * because we know we'll never need to recurse.
    */
   public function hasChildren() {
     return FALSE;
   }
 }
+
+class SvnLogXMLParser extends SimpleXMLIterator {
+
+  public function current() {
+    $revision = array();
+    $revision['rev'] = intval((string) $logentry['revision']);
+    $revision['author'] = (string) $logentry->author;
+    $revision['msg'] = rtrim((string) $logentry->msg); // no trailing linebreaks
+    $revision['time_t'] = strtotime((string) $logentry->date);
+    $paths = array();
+
+    foreach ($logentry->paths->path as $logpath) {
+      $path = array(
+        'path' => (string) $logpath,
+        'action' => (string) $logpath['action'],
+      );
+      if (!empty($logpath['copyfrom-path'])) {
+        $path['copyfrom'] = array(
+          'path' => (string) $logpath['copyfrom-path'],
+          'rev' => (string) $logpath['copyfrom-rev'],
+        );
+      }
+      $paths[$path['path']] = $path;
+    }
+    $revision['paths'] = $paths;
+    return $revision;
+  }
+
+  public function hasChildren() {
+    return FALSE;
+  }
