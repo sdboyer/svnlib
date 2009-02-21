@@ -269,10 +269,7 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function targets($path) {
-    if (!is_file($path)) {
-      throw new Exception("'$path' is not a file, but was passed to `svn info --targets`.", E_ERROR);
-    }
-    $this->cmdOpts[self::TARGETS] = $path;
+    $this->cmdOpts[self::TARGETS] = new SvnOptTargets($path);
     return $this;
   }
 
@@ -287,12 +284,12 @@ abstract class SvnCommand implements CLICommand {
   }*/
 
   public function verbose() {
-    $this->cmdSwitches ^= self::VERBOSE;
+    $this->switchChange($arg, self::VERBOSE);
     return $this;
   }
 
   public function quiet() {
-    $this->cmdSwitches ^= self::QUIET;
+    $this->switchChange($arg, self::QUIET);
     return $this;
   }
 
@@ -336,6 +333,10 @@ abstract class SvnCommand implements CLICommand {
   public function prepare($fluent = TRUE) {
     $this->internalSwitches |= self::PREPARED;
     $this->cmds = array();
+
+    if (method_exists($this, 'resolveParamConflicts')) {
+      $this->resolveParamConflicts();
+    }
 
     foreach ($this->switchInfo as $switch => $info) {
       if ($this->cmdSwitches & $switch) {
@@ -412,10 +413,6 @@ abstract class SvnRead extends SvnCommand {
     }
     $this->cmdOpts[self::TARGET][] = $target;
     return $this;
-  }
-
-  public function targets($file) {
-
   }
 }
 
