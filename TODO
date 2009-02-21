@@ -1,0 +1,3 @@
+  - Implement a caching mechanism. One approach would be creating a class that
+    implements ArrayAccess as a frontend to give the outward appearance of a
+    seamless array with all the accumulated results from a particular command. 
