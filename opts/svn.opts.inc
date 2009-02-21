@@ -90,11 +90,19 @@ class SvnOptDepth extends SvnOpt {
   protected $concatenator = '=';
   protected $opt = '--depth';
 
-  public function __construct(SvnCommand &$sc, $arg) {
-    parent::__construct($sc);
-    if (in_array($arg, array('infinity', 'files', 'immediates', 'empty'))) {
+  protected function checkArg($arg) {
+    if (!in_array($arg, array('infinity', 'files', 'immediates', 'empty'))) {
+      throw new Exception("Invalid argument '$arg' passed to SvnOptDepth", E_RECOVERABLE_ERROR);
+      return FALSE;
+    }
+    return TRUE;
+  }
+
+  public function changeArg($arg) {
+    if ($this->checkArg($arg)) {
       $this->arg = $arg;
     }
+    return $this;
   }
 }
 
@@ -103,7 +111,7 @@ class SvnOptTargets extends SvnOpt {
   protected $concatenator = '=';
   protected $opt = '--targets';
 
-  public function checkArg($arg) {
+  protected function checkArg($arg) {
     if (!is_file($arg)) {
       throw new Exception('Non-file argument passed to SvnOptTargets.', E_RECOVERABLE_ERROR);
       return FALSE;
