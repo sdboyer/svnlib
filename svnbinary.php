@@ -95,7 +95,8 @@ class SvnlookCLI {
 }
 */
 
-$wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
+// $wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
+$wc = new svnworkingcopy('/home/sdboyer/ws/gj/trunk');
 $info = $wc->svnInfo(FALSE);
 $info->internalSwitches |= SvnCommand::PARSE_OUTPUT;
 $info->xml();

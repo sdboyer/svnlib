@@ -161,7 +161,7 @@ abstract class SvnCommand implements CLICommand {
   public $internalSwitches = 0;
   protected $cmdSwitches = 0, $cmdOpts = array();
 
-  public function __construct(SvnWorkingCopy $wc, $defaults = TRUE) {
+  public function __construct(SvnInstance $wc, $defaults = TRUE) {
     $this->wc = &$wc;
     // $this->retContainer = new SplObjectMap();
 
@@ -296,12 +296,21 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
+  protected function switchChange($arg, $switch) {
+    if ($arg) {
+      $this->cmdSwitches |= $switch;
+    }
+    else {
+      $this->cmdSwitches ^= ($this->cmdSwitches & $switch) ? $switch : 0;
+    }
+  }
+
   /**
    * Toggle the `--xml` switch on or off.
    * @return SvnCommand
    */
-  public function xml() {
-    $this->cmdSwitches ^= self::XML;
+  public function xml($arg = TRUE) {
+    $this->switchChange($arg, self::XML);
     return $this;
   }
 
@@ -309,8 +318,8 @@ abstract class SvnCommand implements CLICommand {
    * Toggle the `--incremental` switch on or off.
    * @return SvnCommand
    */
-  public function incremental() {
-    $this->cmdSwitches ^= self::INCREMENTAL;
+  public function incremental($arg = TRUE) {
+    $this->switchChange($arg, self::INCREMENTAL);
     return $this;
   }
 
@@ -383,6 +392,7 @@ abstract class SvnCommand implements CLICommand {
 
 
 abstract class SvnRead extends SvnCommand {
+
   public function revision($rev1, $rev2 = NULL) {
     $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $rev1);
     if (!is_null($rev2)) {
@@ -414,7 +424,7 @@ abstract class SvnRead extends SvnCommand {
  * @author sdboyer
  *
  */
-class SvnInfo extends SvnCommand {
+class SvnInfo extends SvnRead {
   protected $command = 'info';
   public $parserClass = 'SvnInfoParser';
   // protected $target = array();
@@ -428,7 +438,7 @@ class SvnInfo extends SvnCommand {
   }
 }
 
-class SvnLog extends SvnCommand {
+class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x10000;
   protected $command = 'log';
   public $parserClass = 'SvnInfoParser';
@@ -443,7 +453,13 @@ class SvnLog extends SvnCommand {
 
 }
 
-class SvnStatus {
+class SvnList extends SvnRead {
+  protected $command = 'list';
+  public $parserClass = 'SvnListParser';
+}
+
+class SvnStatus extends SvnRead {
+  protected $command = 'status';
   const SHOW_UPDATES = '';
 }
 
