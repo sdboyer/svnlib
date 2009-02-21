@@ -469,7 +469,7 @@ abstract class SvnRead extends SvnCommand {
  */
 class SvnInfo extends SvnRead {
   protected $command = 'info';
-  public $parserClass = 'SvnInfoParser';
+  public $parserClass = 'SvnInfoXMLParser';
   // protected $target = array();
 
   public function revision($rev1, $rev2 = NULL) {
@@ -484,7 +484,7 @@ class SvnInfo extends SvnRead {
 class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
-  public $parserClass = 'SvnInfoParser';
+  public $parserClass = 'SvnInfoXMLParser';
 
   public function revision($arg1, $arg) {
 
