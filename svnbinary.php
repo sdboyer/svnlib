@@ -30,7 +30,7 @@ abstract class SvnInstance extends SplFileInfo {
   protected $defaults = TRUE;
   protected $path;
   protected $cmd;
-  public $invocations, $cmdContainer, $retContainer;
+  public $invocations, $cmdContainer, $retContainer, $errContainer;
 
   public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
@@ -39,6 +39,7 @@ abstract class SvnInstance extends SplFileInfo {
       $this->verify();
     }
     $this->retContainer = new SplObjectMap();
+    $this->errContainer = new SplObjectMap();
     $this->cmdContainer = new SplObjectMap();
     $this->invocations = new SplObjectMap();
   }
@@ -88,15 +89,7 @@ class SvnRepository extends SvnInstance {
   }
 }
 
-/*
-class SvnlookCLI {
-  const NO_AUTO_PROPS = 16;
-  const NO_DIFF_DELETED = 17;
-}
-*/
-
-// $wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
-$wc = new svnworkingcopy('/home/sdboyer/ws/gj/trunk');
+$wc = new SvnWorkingCopy('/home/sdboyer/ws/vcs/gj/trunk');
 $info = $wc->svnInfo(FALSE);
 $info->internalSwitches |= SvnCommand::PARSE_OUTPUT;
 $info->xml();
