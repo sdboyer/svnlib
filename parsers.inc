@@ -53,14 +53,15 @@ class SvnInfoXMLParser extends SimpleXMLIterator {
 class SvnLogXMLParser extends SimpleXMLIterator {
 
   public function current() {
+    $entry = parent::current();
     $revision = array();
-    $revision['rev'] = intval((string) $logentry['revision']);
-    $revision['author'] = (string) $logentry->author;
-    $revision['msg'] = rtrim((string) $logentry->msg); // no trailing linebreaks
-    $revision['time_t'] = strtotime((string) $logentry->date);
+    $revision['rev'] = intval((string) $entry['revision']);
+    $revision['author'] = (string) $entry->author;
+    $revision['msg'] = rtrim((string) $entry->msg); // no trailing linebreaks
+    $revision['time_t'] = strtotime((string) $entry->date);
     $paths = array();
 
-    foreach ($logentry->paths->path as $logpath) {
+    foreach ($entry->paths->path as $logpath) {
       $path = array(
         'path' => (string) $logpath,
         'action' => (string) $logpath['action'],
