@@ -28,13 +28,12 @@ interface CLICommandOpt {
  */
 abstract class SvnInstance extends SplFileInfo {
   protected $defaults = TRUE;
-  protected $path;
   protected $cmd;
+  protected $cmdSwitches = 0, $cmdOpts = array();
   public $invocations, $cmdContainer, $retContainer, $errContainer;
 
   public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
-    $this->path = $path;
     if ($verify) {
       $this->verify();
     }
@@ -49,32 +48,71 @@ abstract class SvnInstance extends SplFileInfo {
     return $this;
   }
 
-  abstract public function verify();
+  public function verify() {
+    if (!$this->isDir()) {
+      throw new Exception('SvnInstance require a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
+    }
+  }
 }
 
 /**
  * Class for managing the root of an Subversion working copy.
  *
- * Once created, it can spawn various invocations of the svn command-line
- * in order to gather information about the state of the working copy.
+ * Once created, it can spawn various invocations of the svn command-line to
+ * gather information about or perform operations on the working copy.
  *
  * @author sdboyer
  *
  */
 class SvnWorkingCopy extends SvnInstance {
+  const NO_AUTH_CACHE   = 0x001;
+
+  const USERNAME    = 1;
+  const PASSWORD    = 2;
 
   public function verify() {
-    if (!is_dir("$this->path/.svn")) {
-      throw new Exception("$this->path is not an svn working copy directory, as it contains no svn metadata.", E_RECOVERABLE_ERROR);
+    parent::verify();
+    if (!is_dir($this . '/.svn')) {
+      throw new Exception($this . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
+  }
+
+  public function username($name) {
+    $this->cmdOpts[self::USERNAME] = new SvnUsername($name);
+    return $this;
+  }
+
+  public function password($pass) {
+    $this->cmdOpts[self::PASSWORD] = new SvnPassword($pass);
+    return $this;
+  }
+
+  public function prepare() {
+    // FIXME This borders on klugey in comparison to the relative elegant
+    // systematicity of the rest of this library.
+    $opts = array();
+    foreach ($this->cmdOpts as $const => $opt) {
+      $opts[] = $opt->getShellString();
+    }
+    if ($this->cmdSwitches & self::NO_AUTH_CACHE) {
+      $opts[] = '--no-auth-cache';
+    }
+    return $opts;
   }
 
   public function svnInfo($defaults = NULL) {
     $this->cmd = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
+    return $this->cmd;
   }
 
   public function svnLog($defaults = NULL) {
     $this->cmd = new SvnLog($this, is_null($defaults) ? $this->defaults : $defaults);
+    return $this->cmd;
+  }
+
+  public function svnList($defaults = NULL) {
+    $this->cmd = new SvnList($this, is_null($defaults) ? $this->defaults : $defaults);
+    return $this->cmd;
   }
 }
 
@@ -87,4 +125,21 @@ class SvnRepository extends SvnInstance {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
+}
+
+/**
+ * Opt for handling `svn --username`.
+ * @author sdboyer
+ *
+ * FIXME I'm a little uncomfortable about an inheritance hierarchy where this
+ * has SvnOpt as its parent. Same goes for SvnPassword.
+ */
+class SvnUsername extends SvnOpt {
+  protected $ordinal = 1;
+  protected $opt = '--username';
+}
+
+class SvnPassword extends SvnOpt {
+  protected $ordinal = 1;
+  protected $opt = '--password';
 }

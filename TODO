@@ -4,9 +4,6 @@ Svnlib TODO list. Very rough!
     implements ArrayAccess as a frontend to give the outward appearance of a
     seamless array with all the accumulated results from a particular command.
   
-  - Add authentication support for SvnWorkingCopy commands - it is only
-    relevant for working copies. Auth data needs to be stored on the wc object.
-    
   - Add support for config dirs. And make it smart.
   
   - Finish actually implementing all the 
