@@ -154,7 +154,6 @@ abstract class SvnCommand implements CLICommand {
   protected $procDescriptor = array(
       1 => array('pipe', 'w'),
       2 => array('pipe', 'w'),
-      // 2 => array("file", "/tmp/$num-error-output.txt", "a"),
     );
 
   /**
@@ -184,6 +183,8 @@ abstract class SvnCommand implements CLICommand {
    */
   public function setParserClass($class) {
     if (!class_exists($class)) {
+      // Until we have late static binding in php 5.3, __CLASS__ will always
+      // output 'SvnCommand'. Keeping it in anyway, to be forward-looking...
       throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_ERROR);
     }
     else if ($this->internalSwitches & self::PARSE_OUTPUT) {
@@ -221,7 +222,7 @@ abstract class SvnCommand implements CLICommand {
 
     $this->procOpen();
     if ($this->wc->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $err, E_WARNING);
+      throw new Exception('svn failed with the following message: ' . $this->wc->errContainer[$this], E_WARNING);
       return;
     }
 
@@ -386,7 +387,11 @@ abstract class SvnCommand implements CLICommand {
     $opts = new SplObjectMap();
     $this->processOpts($opts, $this->cmdOpts);
     uasort($opts, '_svnlib_sort_opts');
-    $this->cmds = array_merge($this->cmds, array_values($opts));
+    for (reset($opts); $string = current($opts); $this->cmds[] = $string, next($opts));
+    // $this->cmds = array_merge($this->cmds, array_values($opts));
+    if ($this->wc instanceof SvnWorkingCopy) {
+      $this->cmds = array_merge($this->wc->prepare(), $this->cmds);
+    }
 
     array_unshift($this->cmds, 'svn', $this->command);
     return $fluent ? $this : $this->cmds;
@@ -426,6 +431,10 @@ abstract class SvnCommand implements CLICommand {
         }
       }
     }
+  }
+
+  public function __destruct() {
+    $this->procClose();
   }
 }
 
@@ -484,9 +493,9 @@ class SvnInfo extends SvnRead {
 class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
-  public $parserClass = 'SvnInfoXMLParser';
+  public $parserClass = 'SvnLogXMLParser';
 
-  public function revision($arg1, $arg) {
+  public function revision($arg1, $arg2 = NULL) {
 
   }
 
