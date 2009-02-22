@@ -149,7 +149,7 @@ abstract class SvnCommand implements CLICommand {
     if (!class_exists($class)) {
       // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
       // will always output 'SvnCommand'. Keeping it in anyway, in anticipation.
-      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_ERROR);
+      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_RECOVERABLE_ERROR);
     }
     else if ($this->internalSwitches & self::PARSE_OUTPUT) {
       $this->parser = new ReflectionClass($class);
@@ -172,8 +172,13 @@ abstract class SvnCommand implements CLICommand {
   }
 
   /**
-   * Execute the
+   * Execute the command according to dimensions of the object's internal state.
+   *
+   * Prepares (if necessary) all the various dimensions of the cli invocation's
+   * state, then fires up a process and gets into output and/or error handling.
+   *
    * @see CLICommand::execute()
+   *
    * @param bool $fluent
    *  Indicates whether or not this method should behave fluently (should return
    *  $this instead of the possibly parsed return value). Defaults to FALSE.
@@ -190,7 +195,9 @@ abstract class SvnCommand implements CLICommand {
       return;
     }
 
-    $this->svnRoot->retContainer[$this] = ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance(stream_get_contents($this->procPipes[1])) : stream_get_contents($this->procPipes[1]);
+    $this->svnRoot->retContainer[$this] = ($this->internalSwitches & self::PARSE_OUTPUT) ?
+      $this->parser->newInstance(stream_get_contents($this->procPipes[1])) :
+      stream_get_contents($this->procPipes[1]);
     $this->procClose();
 
     if ($fluent) {
