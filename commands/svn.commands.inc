@@ -256,7 +256,7 @@ abstract class SvnCommand implements CLICommand {
     return $this->depth('none');
   }
 
-  protected function switchChange($arg, $switch) {
+  protected function fiddleSwitch($arg, $switch) {
     if ($arg) {
       $this->cmdSwitches |= $switch;
     }
@@ -271,12 +271,12 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function verbose() {
-    $this->switchChange($arg, self::VERBOSE);
+    $this->fiddleSwitch($arg, self::VERBOSE);
     return $this;
   }
 
   public function quiet() {
-    $this->switchChange($arg, self::QUIET);
+    $this->fiddleSwitch($arg, self::QUIET);
     return $this;
   }
 
@@ -285,7 +285,7 @@ abstract class SvnCommand implements CLICommand {
    * @return SvnCommand
    */
   public function xml($arg = TRUE) {
-    $this->switchChange($arg, self::XML);
+    $this->fiddleSwitch($arg, self::XML);
     return $this;
   }
 
@@ -294,32 +294,32 @@ abstract class SvnCommand implements CLICommand {
    * @return SvnCommand
    */
   public function incremental($arg = TRUE) {
-    $this->switchChange($arg, self::INCREMENTAL);
+    $this->fiddleSwitch($arg, self::INCREMENTAL);
     return $this;
   }
 
   public function force($arg = TRUE) {
-    $this->switchChange($arg, self::FORCE);
+    $this->fiddleSwitch($arg, self::FORCE);
     return $this;
   }
 
   public function forceLog($arg = TRUE) {
-    $this->switchChange($arg, self::DRY_RUN);
+    $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
   }
 
   public function noIgnore($arg = TRUE) {
-    $this->switchChange($arg, self::NO_IGNORE);
+    $this->fiddleSwitch($arg, self::NO_IGNORE);
     return $this;
   }
 
   public function autoProps($arg = TRUE) {
-    $this->switchChange($arg, self::AUTO_PROPS);
+    $this->fiddleSwitch($arg, self::AUTO_PROPS);
     return $this;
   }
 
   public function parents($arg = TRUE) {
-    $this->switchChange($arg, self::PARENTS);
+    $this->fiddleSwitch($arg, self::PARENTS);
     return $this;
   }
 
@@ -409,7 +409,7 @@ abstract class SvnCommand implements CLICommand {
 abstract class SvnWrite extends SvnCommand {
 
   public function dryRun($arg = TRUE) {
-    $this->switchChange($arg, self::DRY_RUN);
+    $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
   }
 }
