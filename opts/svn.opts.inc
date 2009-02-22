@@ -31,7 +31,7 @@ abstract class SvnOpt implements CLICommandOpt {
   }
 
   public function getOrdinal() {
-    return self::ORDINAL;
+    return $this->ordinal;
   }
 
   public function getShellString() {
@@ -40,7 +40,7 @@ abstract class SvnOpt implements CLICommandOpt {
 }
 
 class SvnOptRevision extends SvnOpt {
-  const ORDINAL = 1;
+  protected $ordinal = 1;
 
   protected $arg2 = '', $opt = '-r';
 
@@ -72,7 +72,7 @@ class SvnOptRevision extends SvnOpt {
 }
 
 class SvnOptAccept extends SvnOpt  {
-  const ORDINAL = 2;
+  protected $ordinal = 2;
 
   protected $opt = '--accept ';
 
@@ -86,7 +86,7 @@ class SvnOptAccept extends SvnOpt  {
 }
 
 class SvnOptDepth extends SvnOpt {
-  const ORDINAL = 3;
+  protected $ordinal = 3;
   protected $concatenator = '=';
   protected $opt = '--depth';
 
@@ -107,7 +107,7 @@ class SvnOptDepth extends SvnOpt {
 }
 
 class SvnOptTargets extends SvnOpt {
-  const ORDINAL = 4;
+  protected $ordinal = 4;
   protected $concatenator = '=';
   protected $opt = '--targets';
 
@@ -121,7 +121,7 @@ class SvnOptTargets extends SvnOpt {
 }
 
 class SvnOptTarget extends SvnOpt {
-  const ORDINAL = 5;
+  protected $ordinal = 5;
   protected $rev = FALSE;
 
   public function revision($rev) {
@@ -133,7 +133,6 @@ class SvnOptTarget extends SvnOpt {
   }
 
   public function getShellString() {
-    $string = escapeshellarg($this->arg);
-    return ($this->rev === FALSE) ?  $string : $string . '@' . escapeshellarg($this->rev);
+    return escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
   }
 }
