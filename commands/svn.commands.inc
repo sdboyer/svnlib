@@ -111,7 +111,7 @@ abstract class SvnCommand implements CLICommand {
    *
    * @var SvnWorkingCopy
    */
-  protected $wc;
+  protected $svnRoot;
 
   protected $procPipes = array(), $process = 0;
 
@@ -129,8 +129,8 @@ abstract class SvnCommand implements CLICommand {
   public $internalSwitches = 0;
   protected $cmdSwitches = 0, $cmdOpts = array();
 
-  public function __construct(SvnInstance $wc, $defaults = TRUE) {
-    $this->wc = &$wc;
+  public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
+    $this->svnRoot = &$svnRoot;
     // $this->retContainer = new SplObjectMap();
 
     if ($defaults) {
@@ -185,18 +185,18 @@ abstract class SvnCommand implements CLICommand {
     }
 
     $this->procOpen();
-    if ($this->wc->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->wc->errContainer[$this], E_WARNING);
+    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
+      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_WARNING);
       return;
     }
 
-    $this->wc->retContainer[$this] = ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance(stream_get_contents($this->procPipes[1])) : stream_get_contents($this->procPipes[1]);
+    $this->svnRoot->retContainer[$this] = ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance(stream_get_contents($this->procPipes[1])) : stream_get_contents($this->procPipes[1]);
     $this->procClose();
 
     if ($fluent) {
       return $this;
     }
-    return $this->wc->retContainer[$this];
+    return $this->svnRoot->retContainer[$this];
   }
 
   /**
@@ -207,7 +207,7 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, (string) $this->wc, NULL);
+    $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, (string) $this->svnRoot, NULL);
   }
 
   /**
@@ -353,8 +353,8 @@ abstract class SvnCommand implements CLICommand {
     asort($opts, SORT_NUMERIC);
     // for (reset($opts); list(, $string) = each($opts); $this->cmds[] = $string);
     $this->cmds = array_merge($this->cmds, array_keys($opts));
-    if ($this->wc instanceof SvnWorkingCopy) {
-      $this->cmds = array_merge($this->wc->prepare(), $this->cmds);
+    if ($this->svnRoot instanceof SvnWorkingCopy) {
+      $this->cmds = array_merge($this->svnRoot->prepare(), $this->cmds);
     }
 
     array_unshift($this->cmds, 'svn', $this->command);
