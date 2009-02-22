@@ -50,42 +50,6 @@ abstract class SvnCommand implements CLICommand {
   const NO_AUTH_CACHE     = 0x08000;
   const NON_INTERACTIVE   = 0x10000;
 
-/*  protected $optInfo = array(
-    self::ACCEPT => array(
-      'shell string' => '--accept',
-      'version' => 1.5,
-      'allowed args' => array('postpone', 'base', 'mine-full', 'theirs-full', 'edit', 'launch'),
-      // 'concatenator' => '=',
-    ),
-    self::DEPTH => array(
-      'shell string' => '--depth',
-      'version' => 1.5,
-      'allowed args' => array('empty', 'files', 'immediates', 'infinity'),
-    ),
-    self::ENCODING => array(
-      'shell string' => '--encoding',
-    // 'version' => 1.4,
-    ),
-    self::FILE => array(
-      'shell string' => '-F',
-    ),
-    self::LIMIT => array(
-      'shell string' => '-l'
-    ),
-    self::MESSAGE => array(
-      'shell string' => '-m'
-    ),
-    self::REVISION => array(
-      'shell string' => '-r'
-    ),
-    self::TARGETS => array(
-      'shell string' => '--targets'
-    ),
-    self::WITH_REVPROP => array(
-      'shell string' => '--with-revprop'
-    ),
-  );*/
-
   protected $switchInfo = array(
     self::VERBOSE => array(
       'shell string' => '-v',
@@ -183,8 +147,8 @@ abstract class SvnCommand implements CLICommand {
    */
   public function setParserClass($class) {
     if (!class_exists($class)) {
-      // Until we have late static binding in php 5.3, __CLASS__ will always
-      // output 'SvnCommand'. Keeping it in anyway, to be forward-looking...
+      // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
+      // will always output 'SvnCommand'. Keeping it in anyway, in anticipation.
       throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_ERROR);
     }
     else if ($this->internalSwitches & self::PARSE_OUTPUT) {
@@ -242,9 +206,7 @@ abstract class SvnCommand implements CLICommand {
    * @return void
    */
   protected function procOpen() {
-    if (is_resource($this->process)) {
-      $this->procClose();
-    }
+    $this->procClose();
     $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, (string) $this->wc, NULL);
   }
 
@@ -253,11 +215,13 @@ abstract class SvnCommand implements CLICommand {
    * @return void
    */
   protected function procClose() {
-    foreach ($this->procPipes as $pipe) {
-      fclose($pipe);
+    if (is_resource($this->process)) {
+      foreach ($this->procPipes as $pipe) {
+        fclose($pipe);
+      }
+      $this->procPipes = array();
+      $this->process = proc_close($this->process);
     }
-    $this->procPipes = array();
-    $this->process = proc_close($this->process);
   }
 
   /**
@@ -266,7 +230,7 @@ abstract class SvnCommand implements CLICommand {
    * @return SvnCommand
    */
   public function getVersion() {
-
+    return system('svn -q --version');
   }
 
   public function depth($arg) {
@@ -384,11 +348,11 @@ abstract class SvnCommand implements CLICommand {
     }
     ksort($this->cmds);
 
-    $opts = new SplObjectMap();
+    $opts = array();
     $this->processOpts($opts, $this->cmdOpts);
-    uasort($opts, '_svnlib_sort_opts');
-    for (reset($opts); $string = current($opts); $this->cmds[] = $string, next($opts));
-    // $this->cmds = array_merge($this->cmds, array_values($opts));
+    asort($opts, SORT_NUMERIC);
+    // for (reset($opts); list(, $string) = each($opts); $this->cmds[] = $string);
+    $this->cmds = array_merge($this->cmds, array_keys($opts));
     if ($this->wc instanceof SvnWorkingCopy) {
       $this->cmds = array_merge($this->wc->prepare(), $this->cmds);
     }
@@ -403,7 +367,6 @@ abstract class SvnCommand implements CLICommand {
    * @param $opts
    * @param $arg
    * @return void
-   * TODO this is where the real, really legit and really interesting use for SplObjectMap is.
    */
   protected function processOpts(&$opts, $arg) {
     if (is_array($arg)) {
@@ -412,7 +375,11 @@ abstract class SvnCommand implements CLICommand {
       }
     }
     else {
-      $opts[$arg] = $arg->getShellString();
+      // TODO This will probably work well (may even have some elegant benefits
+      // b/c it ought to effectively prevent duplicate shell params. HOWEVER, a
+      // better, smarter system that leverages an ArrayObject + SplObjectStorage
+      // structure is the eventual goal.
+      $opts[$arg->getShellString()] = $arg->getOrdinal();
     }
   }
 
@@ -482,10 +449,10 @@ class SvnInfo extends SvnRead {
   // protected $target = array();
 
   public function revision($rev1, $rev2 = NULL) {
-    if (!is_null($arg2)) {
+    if (!is_null($rev2)) {
       throw new Exception('`svn info` can take only a single revision argument, not a revision range. The second argument will be ignored.', E_WARNING);
     }
-    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $arg1);
+    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $rev1);
     return $this;
   }
 }

@@ -9,3 +9,6 @@ Svnlib TODO list. Very rough!
   - Finish actually implementing all the 
   
   - Devise some approach to handling the differences between svn 1.4 and 1.5 
+
+  - Consider changing CLICommandOpt::getShellString() to just mandating an
+    implementation of __toString()?
