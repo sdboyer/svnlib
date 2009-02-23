@@ -1,10 +1,10 @@
 <?php
 
 // TODO temporary straight includes until a smarter system is introduced
-require_once './lib.inc';
-require_once './parsers.inc';
-require_once './commands/svn.commands.inc';
-require_once './opts/svn.opts.inc';
+require_once dirname(__FILE__) . '/lib.inc';
+require_once dirname(__FILE__) . '/parsers.inc';
+require_once dirname(__FILE__) . '/commands/svn.commands.inc';
+require_once dirname(__FILE__) . '/opts/svn.opts.inc';
 
 /*interface CLI {
   const IS_SWITCH = 0x0001;
@@ -50,7 +50,7 @@ abstract class SvnInstance extends SplFileInfo {
 
   public function verify() {
     if (!$this->isDir()) {
-      throw new Exception('SvnInstance require a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
+      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
     }
   }
 }
@@ -67,9 +67,6 @@ abstract class SvnInstance extends SplFileInfo {
 class SvnWorkingCopy extends SvnInstance {
   const NO_AUTH_CACHE   = 0x001;
 
-  const USERNAME    = 1;
-  const PASSWORD    = 2;
-
   public function verify() {
     parent::verify();
     if (!is_dir($this . '/.svn')) {
@@ -77,18 +74,8 @@ class SvnWorkingCopy extends SvnInstance {
     }
   }
 
-  public function username($name) {
-    $this->cmdOpts[self::USERNAME] = new SvnUsername($name);
-    return $this;
-  }
-
-  public function password($pass) {
-    $this->cmdOpts[self::PASSWORD] = new SvnPassword($pass);
-    return $this;
-  }
-
   public function prepare() {
-    // FIXME This borders on klugey in comparison to the relative elegant
+    // FIXME This borders on klugey in comparison to the relatively elegant
     // systematicity of the rest of this library.
     $opts = array();
     foreach ($this->cmdOpts as $const => $opt) {
@@ -125,21 +112,4 @@ class SvnRepository extends SvnInstance {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
-}
-
-/**
- * Opt for handling `svn --username`.
- * @author sdboyer
- *
- * FIXME I'm a little uncomfortable about an inheritance hierarchy where this
- * has SvnOpt as its parent. Same goes for SvnPassword.
- */
-class SvnUsername extends SvnOpt {
-  protected $ordinal = 1;
-  protected $opt = '--username';
-}
-
-class SvnPassword extends SvnOpt {
-  protected $ordinal = 1;
-  protected $opt = '--password';
 }

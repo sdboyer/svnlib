@@ -14,22 +14,23 @@ abstract class SvnCommand implements CLICommand {
   const CACHE_OUTPUT  = 0x004;
 
   // opts
-  const AUTH          = 1;
-  const CONFIG_DIR    = 2;
-  const ACCEPT        = 3;
+  const USERNAME      = 1;
+  const PASSWORD      = 2;
+  const CONFIG_DIR    = 3;
+  const ACCEPT        = 4;
   // const CHANGE = 3; // use revision
   // const CHANGELIST = 4;
-  const DEPTH         = 4;
-  const ENCODING      = 5;
-  const FILE          = 6;
-  const LIMIT         = 7;
-  const MESSAGE       = 8;
+  const DEPTH         = 5;
+  const ENCODING      = 6;
+  const FILE          = 7;
+  const LIMIT         = 8;
+  const MESSAGE       = 9;
   // const DIFF_NEW = 15;
   // const DIFF_OLD = 21;
-  const REVISION      = 9;
-  const TARGETS       = 10;
-  const WITH_REVPROP  = 11;
-  const TARGET        = 12;
+  const REVISION      = 10;
+  const TARGETS       = 11;
+  const WITH_REVPROP  = 12;
+  const TARGET        = 13;
 
   // cli switches
   const VERBOSE           = 0x00001;
@@ -255,6 +256,21 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
+  public function username($name) {
+    $this->cmdOpts[self::USERNAME] = new SvnOptUsername($this, $name);
+    return $this;
+  }
+
+  public function password($pass) {
+    $this->cmdOpts[self::PASSWORD] = new SvnOptPassword($this, $pass);
+    return $this;
+  }
+
+  public function configDir($dir) {
+    $this->cmdOpts[self::CONFIG_DIR] = new SvnOptConfigDir($this, $dir);
+    return $this;
+  }
+
   public function recursive() {
     return $this->depth('infinity');
   }
@@ -277,7 +293,7 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
-  public function verbose() {
+  public function verbose($arg) {
     $this->fiddleSwitch($arg, self::VERBOSE);
     return $this;
   }
@@ -468,10 +484,6 @@ class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
   public $parserClass = 'SvnLogXMLParser';
-
-  public function revision($arg1, $arg2 = NULL) {
-
-  }
 
   public function stopOnCopy() {
     $this->cmdSwitches ^= self::STOP_ON_COPY;
