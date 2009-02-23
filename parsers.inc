@@ -22,9 +22,9 @@ class SvnInfoXMLParser extends SimpleXMLIterator {
   public function current() {
     $entry = parent::current();
     $item = array();
-    $item['url'] = (string) $entry->url;
-    $item['repository_root'] = (string) $entry->repository->root;
-    $item['repository_uuid'] = (string) $entry->repository->uuid;
+    $item['url'] = (string) $this->entry->url;
+    $item['repository_root'] = (string) $this->entry->repository->root;
+    $item['repository_uuid'] = (string) $this->entry->repository->uuid;
 
     if ($item['url'] == $item['repository_root']) {
       $item['path'] = '/';
@@ -32,12 +32,12 @@ class SvnInfoXMLParser extends SimpleXMLIterator {
     else {
       $item['path'] = substr($item['url'], strlen($item['repository_root']));
     }
-    $item['type'] = (string) $entry['kind'];
-    $relative_path = (string) $entry['path'];
-    $item['rev'] = intval((string) $entry['revision']); // current state of the item
-    $item['created_rev'] = intval((string) $entry->commit['revision']); // last edit
-    $item['last_author'] = (string) $entry->commit->author;
-    $item['time_t'] = strtotime((string) $entry->commit->date);
+    $item['type'] = (string) $this->entry['kind'];
+    $relative_path = (string) $this->entry['path'];
+    $item['rev'] = intval((string) $this->entry['revision']); // current state of the item
+    $item['created_rev'] = intval((string) $this->entry->commit['revision']); // last edit
+    $item['last_author'] = (string) $this->entry->commit->author;
+    $item['time_t'] = strtotime((string) $this->entry->commit->date);
     return $item;
   }
 
@@ -81,4 +81,8 @@ class SvnLogXMLParser extends SimpleXMLIterator {
   public function hasChildren() {
     return FALSE;
   }
+}
+
+class SvnListParser {
+
 }
