@@ -136,3 +136,33 @@ class SvnOptTarget extends SvnOpt {
     return escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
   }
 }
+
+/**
+ * Opt for handling `svn --username`.
+ * @author sdboyer
+ *
+ * FIXME I'm a little uncomfortable about an inheritance hierarchy where this
+ * has SvnOpt as its parent. Same goes for SvnPassword, SvnConfigdir.
+ */
+class SvnOptUsername extends SvnOpt {
+  protected $ordinal = 1;
+  protected $opt = '--username';
+}
+
+class SvnOptPassword extends SvnOpt {
+  protected $ordinal = 2;
+  protected $opt = '--password';
+}
+
+class SvnOptConfigDir extends SvnOpt {
+  protected $ordinal = 3;
+  protected $opt = '--config-dir';
+
+  protected function checkArg($arg) {
+    if (!is_dir($arg)) {
+      throw new Exception("'" . $arg . "' is not a directory; SvnConfigdir requires a valid directory be provided.", E_RECOVERABLE_ERROR);
+      return FALSE;
+    }
+    return TRUE;
+  }
+}
