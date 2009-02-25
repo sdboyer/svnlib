@@ -1,0 +1,7 @@
+### Dummy file for a minimal SVN config dir that we can pass as --config-dir.
+### See your own copy, $HOME/.subversion/servers, for more explanations.
+
+[groups]
+# no group settings
+[global]
+# no global settings

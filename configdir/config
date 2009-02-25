@@ -1,0 +1,15 @@
+### Dummy file for a minimal SVN config dir that we can pass as --config-dir.
+### See your own copy, $HOME/.subversion/config, for more explanations.
+
+[auth]
+store-passwords = no
+store-auth-creds = no
+
+[helpers]
+# no helper settings
+[tunnels]
+# no tunnel settings
+[miscellany]
+# no miscellaneous settings
+[auto-props]
+# ...you know the drill.
