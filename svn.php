@@ -54,6 +54,8 @@ abstract class SvnInstance extends SplFileInfo {
       throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
     }
   }
+
+  protected abstract function getInfo();
 }
 
 /**
@@ -66,7 +68,31 @@ abstract class SvnInstance extends SplFileInfo {
  *
  */
 class SvnWorkingCopy extends SvnInstance {
+  protected $repoRoot;
+  protected $latestRev;
+
   const NO_AUTH_CACHE   = 0x001;
+
+  protected function getInfo() {
+    $info = new SvnInfo($this, FALSE);
+    $output = $info->target('.')->configDir(dirname(__FILE__) . '/configdir')->execute();
+    preg_match('/^Repository Root: (.*)\n/m', $output, $root);
+    $this->repoRoot = $root[1];
+    preg_match('/^Revision: (.*)\n/m', $output, $rev);
+    $this->latestRev = $rev[1];
+  }
+
+  public function __get($name) {
+    switch ($name) {
+      case 'repoRoot':
+      case 'latestRev':
+        if (!$this->$name) {
+          $this->getInfo();
+        }
+        return $this->$name;
+    }
+    return NULL;
+  }
 
   public function verify() {
     parent::verify();
@@ -117,13 +143,6 @@ class SvnWorkingCopy extends SvnInstance {
     $this->cmd = new SvnList($this, is_null($defaults) ? $this->defaults : $defaults);
     return $this->cmd;
   }
-
-  public function getInfo($target, $revision, $defaults = NULL) {
-    if (empty($this->cache[$target][$revision])) {
-      $info = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
-
-    }
-  }
 }
 
 class SvnRepository extends SvnInstance {
@@ -134,5 +153,9 @@ class SvnRepository extends SvnInstance {
     if ($exit) {
       throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
+  }
+
+  protected function getInfo() {
+
   }
 }
