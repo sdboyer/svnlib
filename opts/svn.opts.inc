@@ -170,7 +170,7 @@ class SvnOptTargets extends SvnOpt {
   }
 
   public function prepare() {
-    $this->fileOut = '/tmp/svncommand-' . spl_object_hash($sc);
+    $this->fileOut = '/tmp/svncommand-' . spl_object_hash($this->sc);
     $this->fp = fopen($this->fileOut, 'w');
     //
     if (!empty($this->fileExternal)) {

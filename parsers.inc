@@ -82,11 +82,6 @@ class SvnLogParser extends IteratorIterator {
     $revision['paths'] = $paths;
     return $revision;
   }
-
-  public function key() {
-    $item = $this->getInnerIterator()->current();
-    return $item['revision'];
-  }
 }
 
 class SvnListParser {

@@ -79,7 +79,7 @@ class SvnWorkingCopy extends SvnInstance {
     preg_match('/^Repository Root: (.*)\n/m', $output, $root);
     $this->repoRoot = $root[1];
     preg_match('/^Revision: (.*)\n/m', $output, $rev);
-    $this->latestRev = $rev[1];
+    $this->latestRev = (int) $rev[1];
   }
 
   public function __get($name) {

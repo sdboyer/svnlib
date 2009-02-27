@@ -559,7 +559,3 @@ class SvnDelete {
 
   const KEEP_LOCAL = 20;
 }
-
-function _svnlib_sort_opts($a, $b) {
-  return $a->getOrdinal() - $b->getOrdinal();
-}
