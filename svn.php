@@ -30,6 +30,7 @@ abstract class SvnInstance extends SplFileInfo {
   protected $defaults = TRUE;
   protected $cmd;
   protected $cmdSwitches = 0, $cmdOpts = array();
+  protected $cache = array();
   public $invocations, $cmdContainer, $retContainer, $errContainer;
 
   public function __construct($path, $verify = TRUE) {
@@ -87,19 +88,41 @@ class SvnWorkingCopy extends SvnInstance {
     return $opts;
   }
 
+  /**
+   *
+   * @param bool $defaults
+   * @return SvnInfo
+   */
   public function svnInfo($defaults = NULL) {
     $this->cmd = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
     return $this->cmd;
   }
 
+  /**
+   *
+   * @param bool $defaults
+   * @return SvnLog
+   */
   public function svnLog($defaults = NULL) {
     $this->cmd = new SvnLog($this, is_null($defaults) ? $this->defaults : $defaults);
     return $this->cmd;
   }
 
+  /**
+   *
+   * @param bool $defaults
+   * @return SvnList 
+   */
   public function svnList($defaults = NULL) {
     $this->cmd = new SvnList($this, is_null($defaults) ? $this->defaults : $defaults);
     return $this->cmd;
+  }
+
+  public function getInfo($target, $revision, $defaults = NULL) {
+    if (empty($this->cache[$target][$revision])) {
+      $info = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
+
+    }
   }
 }
 

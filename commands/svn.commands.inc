@@ -114,7 +114,9 @@ abstract class SvnCommand implements CLICommand {
    */
   protected $svnRoot;
 
-  protected $procPipes = array(), $process = 0;
+  protected $procPipes = array();
+
+  protected $process = 0;
 
   protected $procDescriptor = array(
       1 => array('pipe', 'w'),
@@ -128,7 +130,8 @@ abstract class SvnCommand implements CLICommand {
    */
   protected $parser;
   public $internalSwitches = 0;
-  protected $cmdSwitches = 0, $cmdOpts = array();
+  protected $cmdSwitches = 0;
+  protected $cmdOpts = array();
 
   public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
     $this->svnRoot = &$svnRoot;
@@ -152,9 +155,7 @@ abstract class SvnCommand implements CLICommand {
       // will always output 'SvnCommand'. Keeping it in anyway, in anticipation.
       throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_RECOVERABLE_ERROR);
     }
-    else if ($this->internalSwitches & self::PARSE_OUTPUT) {
-      $this->parser = new ReflectionClass($class);
-    }
+    $this->parser = new ReflectionClass($class);
     return $this;
   }
 
@@ -166,6 +167,8 @@ abstract class SvnCommand implements CLICommand {
   public function setDefaults() {
     $this->internalSwitches |= self::PARSE_OUTPUT;
     $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
+    // @todo configdir needs to be done more intelligently
+    $this->configDir(dirname(__FILE__) . '/../configdir');
     if (isset($this->parserClass)) {
       $this->setParserClass($this->parserClass);
     }
@@ -191,14 +194,18 @@ abstract class SvnCommand implements CLICommand {
     }
 
     $this->procOpen();
+
+    $ret = stream_get_contents($this->procPipes[1]);
+
     if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_WARNING);
+      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
       return;
     }
+    
+    $this->svnRoot->retContainer[$this] =
+      ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance($ret) : $ret;
 
-    $this->svnRoot->retContainer[$this] = ($this->internalSwitches & self::PARSE_OUTPUT) ?
-      $this->parser->newInstance(stream_get_contents($this->procPipes[1])) :
-      stream_get_contents($this->procPipes[1]);
+
     $this->procClose();
 
     if ($fluent) {
@@ -243,7 +250,7 @@ abstract class SvnCommand implements CLICommand {
 
   public function depth($arg) {
     if (!isset($this->cmdOpts[self::DEPTH])) {
-      $this->cmdOpts[self::DEPTH] = new SvnOptDepth($arg);
+      $this->cmdOpts[self::DEPTH] = new SvnOptDepth($this, $arg);
     }
     else {
       $this->cmdOpts[self::DEPTH]->changeArg($arg);
@@ -252,7 +259,7 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function targets($path) {
-    $this->cmdOpts[self::TARGETS] = new SvnOptTargets($path);
+    $this->cmdOpts[self::TARGETS] = new SvnOptTargets($this, $path);
     return $this;
   }
 
@@ -293,12 +300,12 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
-  public function verbose($arg) {
+  public function verbose($arg = TRUE) {
     $this->fiddleSwitch($arg, self::VERBOSE);
     return $this;
   }
 
-  public function quiet() {
+  public function quiet($arg = TRUE) {
     $this->fiddleSwitch($arg, self::QUIET);
     return $this;
   }
@@ -393,7 +400,7 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function processOpts(&$opts, $arg) {
     if (is_array($arg)) {
-      foreach ($arg as $opt => $obj) {
+      foreach ($arg as $obj) {
         $this->processOpts($opts, $obj);
       }
     }
@@ -483,7 +490,7 @@ class SvnInfo extends SvnRead {
 class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
-  public $parserClass = 'SvnLogXMLParser';
+  public $parserClass = 'SvnLogParser';
 
   public function stopOnCopy() {
     $this->cmdSwitches ^= self::STOP_ON_COPY;
