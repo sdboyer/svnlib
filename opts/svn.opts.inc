@@ -15,6 +15,7 @@
  *
  */
 abstract class SvnOpt implements CLICommandOpt {
+  protected $sc;
   protected $arg = '';
   protected $concatenator = ' ';
 
@@ -35,6 +36,9 @@ abstract class SvnOpt implements CLICommandOpt {
   }
 
   public function getShellString() {
+    if (method_exists($this, 'prepare')) {
+      $this->prepare();
+    }
     return $this->opt . $this->concatenator . escapeshellarg($this->arg);
   }
 }
@@ -60,6 +64,13 @@ class SvnOptRevision extends SvnOpt {
       }
     }
     return TRUE;
+  }
+
+  public function prepare() {
+    if ($this->cmdOpts[self::TARGETS] && $this->cmdOpts[self::TARGETS]->usingRevs) {
+      throw new Exception('Setting explicit revision numbers (via -r, that is, SvnOptRevision) will override the revisions explicitly specified per target.', E_WARNING);
+    }
+    return $this;
   }
 
   public function getShellString() {
@@ -110,13 +121,72 @@ class SvnOptTargets extends SvnOpt {
   protected $ordinal = 4;
   protected $concatenator = '=';
   protected $opt = '--targets';
+  protected $mp, $fp;
+  protected $fileExternal, $fileOut;
+  protected $usingRevs = FALSE;
 
-  protected function checkArg($arg) {
-    if (!is_file($arg)) {
+  public function __construct(SvnCommand &$sc) {
+    $this->sc = &$sc;
+    $this->mp = fopen('php://memory', 'rw');
+  }
+
+  public function setTargetsFile($file) {
+    if (!is_file($file)) {
       throw new Exception('Non-file argument passed to SvnOptTargets.', E_RECOVERABLE_ERROR);
-      return FALSE;
     }
-    return TRUE;
+    else {
+      $this->fileExternal = $file;
+    }
+    return $this;
+  }
+
+  public function addTarget($target, $rev = NULL) {
+    // FIXME what's the proper approach to escaping input here?
+    if ($rev !== NULL) {
+      $this->usingRevs = TRUE;
+      $string = $target . '@' . $rev;
+    }
+    else {
+      $string = $target;
+    }
+    fwrite($this->mp, $string . "\n");
+    return $this;
+  }
+
+  protected function cleanUp() {
+    if (is_resource($this->mp)) {
+      fclose($this->mp);
+    }
+    if (is_resource($this->fp)) {
+      fclose($this->fp);
+    }
+    if (file_exists($this->fileOut)) {
+      unlink($this->fileOut);
+    }
+  }
+
+  public function __destruct() {
+    $this->cleanUp();
+  }
+
+  public function prepare() {
+    $this->fileOut = '/tmp/svncommand-' . spl_object_hash($sc);
+    $this->fp = fopen($this->fileOut, 'w');
+    //
+    if (!empty($this->fileExternal)) {
+      fwrite($this->fp, file_get_contents($this->fileExternal));
+    }
+    rewind($this->mp);
+    fwrite($this->fp, stream_get_contents($this->mp));
+    // Very important that we fclose() here, to ensure that a second call won't
+    // generate duplicate data. We leave the memory handle open, though.
+    fclose($this->fp);
+    return $this;
+  }
+
+  public function getShellString() {
+    $this->prepare();
+    return '--targets ' . $this->fileOut;
   }
 }
 

@@ -1,8 +1,6 @@
 <?php
 
 /**
- * TODO Add destructor that kills any open processes
- *
  * @author sdboyer
  *
  */
@@ -259,8 +257,19 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function targets($path) {
-    $this->cmdOpts[self::TARGETS] = new SvnOptTargets($this, $path);
+    $this->internalTargets()->setTargetsFile($path);
     return $this;
+  }
+
+  /**
+   * Helper method to lazy-load the complex targets opt as needed.
+   * @return SvnOptTargets
+   */
+  protected function internalTargets() {
+    if (empty($this->cmdOpts[self::TARGETS])) {
+      $this->cmdOpts[self::TARGETS] = new SvnOptTargets($this);
+    }
+    return $this->cmdOpts[self::TARGETS];
   }
 
   public function username($name) {
@@ -454,16 +463,36 @@ abstract class SvnRead extends SvnCommand {
     return $this;
   }
 
-  public function target($target, $rev = NULL) {
-/*    if (!$this->cmdOpts[self::TARGET] instanceof SplObjectMap) {
-      $this->cmdOpts[self::TARGET] = new SplObjectMap();
-    }*/
-
-    $target = new SvnOptTarget($this, $target);
-    if (!is_null($rev)) {
-      $target->revision($rev);
+  /**
+   *
+   * @param string $target
+   *    The target item (file or directory), relative to the instance root.
+   * @param mixed $rev
+   *    Optional. The desired revision for the target item.
+   * @param boolean $aggregate
+   *    Optional. If TRUE, an internal optimization will be used whereby all of
+   *    the target arguments that are passed are grouped into a single --targets
+   *    file. This means a little more overhead initially, but scales far better
+   *    than creating individual object SvnOptTarget instances for each target
+   *    item.
+   *
+   *    Defaults to FALSE. Set this to TRUE if the invocation will have anything
+   *    more than three or four targets.
+   *    @see SvnOptTargets
+   * 
+   * @return SvnRead
+   */
+  public function target($target, $rev = NULL, $aggregate = FALSE) {
+    if ($aggregate) {
+      $this->internalTargets()->addTarget($target, $rev);
     }
-    $this->cmdOpts[self::TARGET][] = $target;
+    else {
+      $target = new SvnOptTarget($this, $target);
+      if (!is_null($rev)) {
+        $target->revision($rev);
+      }
+      $this->cmdOpts[self::TARGET][] = $target;
+    }
     return $this;
   }
 }
