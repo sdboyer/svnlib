@@ -7,9 +7,8 @@
 abstract class SvnCommand implements CLICommand {
 
   // internal state switches
-  const PARSE_OUTPUT  = 0x001;
-  const PREPARED      = 0x002;
-  const CACHE_OUTPUT  = 0x004;
+  const PREPARED      = 0x001;
+  const CACHE_OUTPUT  = 0x002;
 
   // opts
   const USERNAME      = 1;
@@ -171,45 +170,6 @@ abstract class SvnCommand implements CLICommand {
       $this->setParserClass($this->parserClass);
     }
     return $this;
-  }
-
-  /**
-   * Execute the command according to dimensions of the object's internal state.
-   *
-   * Prepares (if necessary) all the various dimensions of the cli invocation's
-   * state, then fires up a process and gets into output and/or error handling.
-   *
-   * @see CLICommand::execute()
-   *
-   * @param bool $fluent
-   *  Indicates whether or not this method should behave fluently (should return
-   *  $this instead of the possibly parsed return value). Defaults to FALSE.
-   * @return mixed
-   */
-  public function execute($fluent = FALSE) {
-    if (!($this->internalSwitches & self::PREPARED)) {
-      $this->prepare(FALSE);
-    }
-
-    $this->procOpen();
-
-    $ret = stream_get_contents($this->procPipes[1]);
-
-    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
-      return;
-    }
-    
-    $this->svnRoot->retContainer[$this] =
-      ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance($ret) : $ret;
-
-
-    $this->procClose();
-
-    if ($fluent) {
-      return $this;
-    }
-    return $this->svnRoot->retContainer[$this];
   }
 
   /**
@@ -438,37 +398,15 @@ abstract class SvnCommand implements CLICommand {
       }
     }
   }
-
-  public function __destruct() {
-    $this->procClose();
-  }
-}
-
-
-abstract class SvnWrite extends SvnCommand {
-
-  public function dryRun($arg = TRUE) {
-    $this->fiddleSwitch($arg, self::DRY_RUN);
-    return $this;
-  }
-}
-
-abstract class SvnRead extends SvnCommand {
-
-  public function revision($rev1, $rev2 = NULL) {
-    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $rev1);
-    if (!is_null($rev2)) {
-      $this->cmdOpts[self::REVISION]->range($rev2);
-    }
-    return $this;
-  }
-
+  
   /**
    *
    * @param string $target
    *    The target item (file or directory), relative to the instance root.
-   * @param mixed $rev
-   *    Optional. The desired revision for the target item.
+   * @param mixed $peg_rev
+   *    Optional. The desired peg revision for the target item. See the svn
+   *    manual for an explanation of the difference between operative revisions
+   *    and peg revisions.
    * @param boolean $aggregate
    *    Optional. If TRUE, an internal optimization will be used whereby all of
    *    the target arguments that are passed are grouped into a single --targets
@@ -479,21 +417,134 @@ abstract class SvnRead extends SvnCommand {
    *    Defaults to FALSE. Set this to TRUE if the invocation will have anything
    *    more than three or four targets.
    *    @see SvnOptTargets
-   * 
+   *
    * @return SvnRead
    */
-  public function target($target, $rev = NULL, $aggregate = FALSE) {
+  public function target($target, $peg_rev = NULL, $aggregate = FALSE) {
     if ($aggregate) {
-      $this->internalTargets()->addTarget($target, $rev);
+      $this->internalTargets()->addTarget($target, $peg_rev);
     }
     else {
       $target = new SvnOptTarget($this, $target);
-      if (!is_null($rev)) {
-        $target->revision($rev);
+      if (!is_null($peg_rev)) {
+        $target->revision($peg_rev);
       }
       $this->cmdOpts[self::TARGET][] = $target;
     }
     return $this;
+  }
+
+  public function __destruct() {
+    $this->procClose();
+  }
+}
+
+
+abstract class SvnWrite extends SvnCommand {
+  protected $procDescriptor = array(
+      2 => array('pipe', 'w'),
+    );
+    
+  public function dryRun($arg = TRUE) {
+    $this->fiddleSwitch($arg, self::DRY_RUN);
+    return $this;
+  }
+
+  /**
+   * Execute the command according to dimensions of the object's internal state.
+   *
+   * Prepares (if necessary) all the various dimensions of the cli invocation's
+   * state, then fires up a process and gets into output and/or error handling.
+   *
+   * @see CLICommand::execute()
+   *
+   * @param bool $fluent
+   *  Indicates whether or not this method should behave fluently (should return
+   *  $this instead of the possibly parsed return value). Defaults to FALSE.
+   * @return mixed
+   */
+  public function execute($fluent = FALSE) {
+    if (!($this->internalSwitches & self::PREPARED)) {
+      $this->prepare(FALSE);
+    }
+
+    $this->procOpen();
+
+    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
+      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
+      return;
+    }
+
+    $this->procClose();
+
+    if ($fluent) {
+      return $this;
+    }
+  }
+}
+
+abstract class SvnRead extends SvnCommand {
+
+  // internal switches
+  const PARSE_OUTPUT  = 0x004;
+  
+  /**
+   * Adds an operative revision to the currently queuing command. Note that
+   * operative revisions are somewhat less intuitive than peg revisions, but peg
+   * revisions tend to be more intuitive. If you have any doubts about whether
+   * to use peg or operative revisions, you should read the subversion manual
+   * for clarification of the differences; barring that, peg revisions are
+   * probably the safer bet.
+   *
+   * @param mixed $op_rev1
+   * @param mixed $op_rev2
+   * @return SvnCommand
+   */
+  public function revision($op_rev1, $op_rev2 = NULL) {
+    $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $op_rev1);
+    if (!is_null($op_rev2)) {
+      $this->cmdOpts[self::REVISION]->range($op_rev2);
+    }
+    return $this;
+  }
+
+  /**
+   * Execute the command according to dimensions of the object's internal state.
+   *
+   * Prepares (if necessary) all the various dimensions of the cli invocation's
+   * state, then fires up a process and gets into output and/or error handling.
+   *
+   * @see CLICommand::execute()
+   *
+   * @param bool $fluent
+   *  Indicates whether or not this method should behave fluently (should return
+   *  $this instead of the possibly parsed return value). Defaults to FALSE.
+   * @return mixed
+   */
+  public function execute($fluent = FALSE) {
+    if (!($this->internalSwitches & self::PREPARED)) {
+      $this->prepare(FALSE);
+    }
+
+    $this->procOpen();
+
+    $ret = stream_get_contents($this->procPipes[1]);
+
+    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
+      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
+      return;
+    }
+
+    $this->svnRoot->retContainer[$this] =
+      ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance($ret) : $ret;
+
+
+    $this->procClose();
+
+    if ($fluent) {
+      return $this;
+    }
+    return $this->svnRoot->retContainer[$this];
   }
 }
 
@@ -524,7 +575,6 @@ class SvnLog extends SvnRead {
   public function stopOnCopy() {
     $this->cmdSwitches ^= self::STOP_ON_COPY;
   }
-
 }
 
 class SvnList extends SvnRead {
@@ -537,20 +587,20 @@ class SvnStatus extends SvnRead {
   const SHOW_UPDATES = '';
 }
 
-class SvnMerge {
+class SvnMerge extends SvnWrite {
   const REINTEGRATE = '';
   const RECORD_ONLY = 24;
 }
 
-class SvnPropGet {
+class SvnPropGet extends SvnRead {
   const STRICT = '';
 }
 
-class SvnCommit {
+class SvnCommit extends SvnWrite {
   const NO_UNLOCK = 19;
 }
 
-class SvnDelete {
+class SvnDelete extends SvnWrite {
   public $x = array(
       self::KEEP_LOCAL => array(
       'shell string' => '--stop-on-copy',
