@@ -115,17 +115,6 @@ abstract class SvnCommand implements CLICommand {
 
   protected $process = 0;
 
-  protected $procDescriptor = array(
-      1 => array('pipe', 'w'),
-      2 => array('pipe', 'w'),
-    );
-
-  /**
-   * Used to spawn the the parsing class object, if/as needed.
-   *
-   * @var ReflectionClass
-   */
-  protected $parser;
   public $internalSwitches = 0;
   protected $cmdSwitches = 0;
   protected $cmdOpts = array();
@@ -140,35 +129,14 @@ abstract class SvnCommand implements CLICommand {
   }
 
   /**
-   * If set to provide output parsing, set the workhorse class that will do the
-   * parsing.
-   *
-   * @param string $class
-   * @return SvnCommand
-   */
-  public function setParserClass($class) {
-    if (!class_exists($class)) {
-      // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
-      // will always output 'SvnCommand'. Keeping it in anyway, in anticipation.
-      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_RECOVERABLE_ERROR);
-    }
-    $this->parser = new ReflectionClass($class);
-    return $this;
-  }
-
-  /**
    * Set some sane defaults that apply for most invocations of the svn binary.
    *
    * @return SvnCommand
    */
   public function setDefaults() {
-    $this->internalSwitches |= self::PARSE_OUTPUT;
     $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
     // @todo configdir needs to be done more intelligently
     $this->configDir(dirname(__FILE__) . '/../configdir');
-    if (isset($this->parserClass)) {
-      $this->setParserClass($this->parserClass);
-    }
     return $this;
   }
 
@@ -487,6 +455,18 @@ abstract class SvnRead extends SvnCommand {
 
   // internal switches
   const PARSE_OUTPUT  = 0x004;
+
+  protected $procDescriptor = array(
+      1 => array('pipe', 'w'),
+      2 => array('pipe', 'w'),
+    );
+
+  /**
+   * Used to spawn the the parsing class object, if/as needed.
+   *
+   * @var ReflectionClass
+   */
+  protected $parser;
   
   /**
    * Adds an operative revision to the currently queuing command. Note that
@@ -505,6 +485,31 @@ abstract class SvnRead extends SvnCommand {
     if (!is_null($op_rev2)) {
       $this->cmdOpts[self::REVISION]->range($op_rev2);
     }
+    return $this;
+  }
+
+  public function setDefaults() {
+    parent::setDefaults();
+    $this->internalSwitches |= self::PARSE_OUTPUT;
+    if (isset($this->parserClass)) {
+      $this->setParserClass($this->parserClass);
+    }
+  }
+
+  /**
+   * If set to provide output parsing, set the workhorse class that will do the
+   * parsing.
+   *
+   * @param string $class
+   * @return SvnCommand
+   */
+  public function setParserClass($class) {
+    if (!class_exists($class)) {
+      // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
+      // will always output 'SvnRead'. Keeping it in anyway, in anticipation.
+      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_RECOVERABLE_ERROR);
+    }
+    $this->parser = new ReflectionClass($class);
     return $this;
   }
 
