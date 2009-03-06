@@ -590,17 +590,26 @@ class SvnStatus extends SvnRead {
 class SvnMerge extends SvnWrite {
   const REINTEGRATE = '';
   const RECORD_ONLY = 24;
+
+  protected $command = 'merge';
 }
 
 class SvnPropGet extends SvnRead {
   const STRICT = '';
+
+  protected $command = 'propget';
 }
 
 class SvnCommit extends SvnWrite {
   const NO_UNLOCK = 19;
+
+  protected $command = 'commit';
 }
 
 class SvnDelete extends SvnWrite {
+
+  protected $command = 'delete';
+
   public $x = array(
       self::KEEP_LOCAL => array(
       'shell string' => '--stop-on-copy',
