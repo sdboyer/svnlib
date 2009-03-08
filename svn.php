@@ -149,9 +149,9 @@ class SvnRepository extends SvnInstance {
 
   public function verify() {
     // Run a fast, low-overhead operation, verifying this is a working svn repository.
-    system('svnadmin lstxns ' . escapeshellarg($path), $exit);
+    system('svnadmin lstxns ' . escapeshellarg($this->getPath()), $exit);
     if ($exit) {
-      throw new Exception("$path is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
+      throw new Exception($this->getPath() . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
 
