@@ -15,15 +15,11 @@ abstract class SvnCommand implements CLICommand {
   const PASSWORD      = 2;
   const CONFIG_DIR    = 3;
   const ACCEPT        = 4;
-  // const CHANGE = 3; // use revision
-  // const CHANGELIST = 4;
   const DEPTH         = 5;
   const ENCODING      = 6;
   const FILE          = 7;
   const LIMIT         = 8;
   const MESSAGE       = 9;
-  // const DIFF_NEW = 15;
-  // const DIFF_OLD = 21;
   const REVISION      = 10;
   const TARGETS       = 11;
   const WITH_REVPROP  = 12;
