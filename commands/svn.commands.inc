@@ -304,10 +304,6 @@ abstract class SvnCommand implements CLICommand {
     $this->internalSwitches |= self::PREPARED;
     $this->cmds = array();
 
-    if (method_exists($this, 'resolveParamConflicts')) {
-      $this->resolveParamConflicts();
-    }
-
     foreach ($this->switchInfo as $switch => $info) {
       if ($this->cmdSwitches & $switch) {
         $this->prepSwitch($switch, $info);
@@ -318,7 +314,6 @@ abstract class SvnCommand implements CLICommand {
     $opts = array();
     $this->processOpts($opts, $this->cmdOpts);
     asort($opts, SORT_NUMERIC);
-    // for (reset($opts); list(, $string) = each($opts); $this->cmds[] = $string);
     $this->cmds = array_merge($this->cmds, array_keys($opts));
     if ($this->svnRoot instanceof SvnWorkingCopy) {
       $this->cmds = array_merge($this->svnRoot->prepare(), $this->cmds);
@@ -588,31 +583,32 @@ class SvnList extends SvnRead {
 }
 
 class SvnStatus extends SvnRead {
+  const SHOW_UPDATES = 0x20000;
+  
   protected $command = 'status';
-  const SHOW_UPDATES = '';
 }
 
 class SvnMerge extends SvnWrite {
-  const REINTEGRATE = '';
-  const RECORD_ONLY = 24;
+  const REINTEGRATE = 0x20000;
+  const RECORD_ONLY = 0x40000;
 
   protected $command = 'merge';
 }
 
 class SvnPropGet extends SvnRead {
-  const STRICT = '';
+  const STRICT = 0x20000;
 
   protected $command = 'propget';
 }
 
 class SvnCommit extends SvnWrite {
-  const NO_UNLOCK = 19;
+  const NO_UNLOCK = 0x20000;
 
   protected $command = 'commit';
 }
 
 class SvnDelete extends SvnWrite {
-
+  const KEEP_LOCAL = 0x20000;
   protected $command = 'delete';
 
   public $x = array(
@@ -620,6 +616,104 @@ class SvnDelete extends SvnWrite {
       'shell string' => '--stop-on-copy',
     ),
   );
+}
 
-  const KEEP_LOCAL = 20;
+class SvnAdd extends SvnWrite {
+
+}
+
+class SvnBlame extends SvnRead {
+
+}
+
+class SvnCat extends SvnRead {
+
+}
+
+class SvnChangelist extends SvnWrite {
+
+}
+
+class SvnCheckout extends SvnWrite {
+
+}
+
+class SvnCleanup extends SvnWrite {
+
+}
+
+class SvnCopy extends SvnWrite {
+
+}
+
+class SvnDiff extends SvnRead {
+
+}
+
+class SvnExport extends SvnWrite {
+
+}
+
+class SvnImport extends SvnWrite {
+
+}
+
+class SvnLock extends SvnRead {
+
+}
+
+class SvnMergeinfo extends SvnRead {
+
+}
+
+class SvnMkdir extends SvnWrite {
+
+}
+
+class SvnMove extends SvnWrite {
+
+}
+
+class SvnPropdel extends SvnWrite {
+
+}
+
+class SvnPropedit extends SvnWrite {
+
+}
+
+class SvnPropget extends SvnRead {
+
+}
+
+class SvnProplist extends SvnRead {
+
+}
+
+class SvnPropset extends SvnWrite {
+
+}
+
+class SvnResolve extends SvnWrite {
+
+}
+
+class SvnResolved extends SvnWrite {
+
+}
+
+class SvnRevert extends SvnWrite {
+
+}
+
+class SvnSwitch extends SvnWrite {
+
+}
+
+class SvnUnlock extends SvnWrite {
+
+}
+
+class SvnUpdate extends SvnWrite {
+
 }
