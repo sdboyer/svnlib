@@ -586,127 +586,152 @@ class SvnMerge extends SvnWrite {
   const RECORD_ONLY = 0x40000;
 
   protected $command = 'merge';
+
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::REINTEGRATE] = array(
+      'shell string' => '--reintegrate',
+    );
+    $this->cmdSwitches[self::RECORD_ONLY] = array(
+      'shell string' => '--record-only',
+    );
+  }
 }
 
 class SvnPropGet extends SvnRead {
   const STRICT = 0x20000;
 
   protected $command = 'propget';
+
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::STRICT] = array(
+      'shell string' => '--strict',
+    );
+  }
 }
 
 class SvnCommit extends SvnWrite {
   const NO_UNLOCK = 0x20000;
 
   protected $command = 'commit';
+
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::NO_UNLOCK] = array(
+      'shell string' => '--no-unlock',
+    );
+  }
 }
 
 class SvnDelete extends SvnWrite {
   const KEEP_LOCAL = 0x20000;
   protected $command = 'delete';
 
-  public $x = array(
-      self::KEEP_LOCAL => array(
-      'shell string' => '--stop-on-copy',
-    ),
-  );
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::KEEP_LOCAL] = array(
+      'shell string' => '--keep-local',
+    );
+  }
 }
 
 class SvnAdd extends SvnWrite {
-
+  protected $command = 'add';
 }
 
 class SvnBlame extends SvnRead {
-
+  protected $command = 'blame';
 }
 
 class SvnCat extends SvnRead {
-
+  protected $command = 'cat';
 }
 
 class SvnChangelist extends SvnWrite {
-
+  protected $command = 'changelist';
 }
 
 class SvnCheckout extends SvnWrite {
-
+  protected $command = 'checkout';
 }
 
 class SvnCleanup extends SvnWrite {
-
+  protected $command = 'cleanup';
 }
 
 class SvnCopy extends SvnWrite {
-
+  protected $command = 'copy';
 }
 
 class SvnDiff extends SvnRead {
-
+  protected $command = 'diff';
 }
 
 class SvnExport extends SvnWrite {
-
+  protected $command = 'export';
 }
 
 class SvnImport extends SvnWrite {
-
+  protected $command = 'import';
 }
 
 class SvnLock extends SvnRead {
-
+  protected $command = 'lock';
 }
 
 class SvnMergeinfo extends SvnRead {
-
+  protected $command = 'mergeinfo';
 }
 
 class SvnMkdir extends SvnWrite {
-
+  protected $command = 'mkdir';
 }
 
 class SvnMove extends SvnWrite {
-
+  protected $command = 'move';
 }
 
 class SvnPropdel extends SvnWrite {
-
+  protected $command = 'propdel';
 }
 
 class SvnPropedit extends SvnWrite {
-
+  protected $command = 'propedit';
 }
 
 class SvnPropget extends SvnRead {
-
+  protected $command = 'propget';
 }
 
 class SvnProplist extends SvnRead {
-
+  protected $command = 'proplist';
 }
 
 class SvnPropset extends SvnWrite {
-
+  protected $command = 'propset';
 }
 
 class SvnResolve extends SvnWrite {
-
+  protected $command = 'resolve';
 }
 
 class SvnResolved extends SvnWrite {
-
+  protected $command = 'resolved';
 }
 
 class SvnRevert extends SvnWrite {
-
+  protected $command = 'revert';
 }
 
 class SvnSwitch extends SvnWrite {
-
+  protected $command = 'switch';
 }
 
 class SvnUnlock extends SvnWrite {
-
+  protected $command = 'unlock';
 }
 
 class SvnUpdate extends SvnWrite {
-
+  protected $command = 'update';
 }
