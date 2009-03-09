@@ -12,12 +12,13 @@ require_once dirname(__FILE__) . '/opts/svn.opts.inc';
  * @author sdboyer
  *
  */
-abstract class SvnInstance extends SplFileInfo {
+abstract class SvnInstance extends SplFileInfo implements CLI {
   protected $defaults = TRUE;
   protected $cmd;
   protected $cmdSwitches = 0, $cmdOpts = array();
   protected $cache = array();
   public $invocations, $cmdContainer, $retContainer, $errContainer;
+  protected $subPath = '';
 
   public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
@@ -35,13 +36,41 @@ abstract class SvnInstance extends SplFileInfo {
     return $this;
   }
 
+  /**
+   * Set a path, relative to the base path that was passed in to the SvnInstance
+   * constructor, that should be used as the base path for all path-based
+   * operations. Primarily useful for specifying a particular branch or tag that
+   * operations should be run against in a fashion that will be transparent to
+   * the subcommand invocations.
+   *
+   * IMPORTANT NOTE: internal handling of subpaths becomes copmlex if you change
+   * the subpath while in the midst of queuing up a command. This internal
+   * behavior is also different for repositories than it is for working copies.
+   *
+   * @param string $path
+   */
+  public function setSubPath($path) {
+    $this->subPath = $path;
+  }
+
   public function verify() {
     if (!$this->isDir()) {
       throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
     }
   }
 
-  protected abstract function getInfo();
+  abstract protected function getInfo();
+
+  public function getFullPath() {
+    if (empty($this->subPath)) {
+      return (string) $this;
+    }
+    else {
+      return (string) $this . DIRECTORY_SEPARATOR . $this->subPath;
+    }
+  }
+
+  abstract public function getPrependPath();
 }
 
 /**
@@ -85,6 +114,14 @@ class SvnWorkingCopy extends SvnInstance {
     if (!is_dir($this . '/.svn')) {
       throw new Exception($this . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
+  }
+
+  public function getWorkingPath() {
+    return $this->getFullPath();
+  }
+
+  public function getPrependPath() {
+    return NULL;
   }
 
   public function prepare() {
@@ -143,5 +180,13 @@ class SvnRepository extends SvnInstance {
 
   protected function getInfo() {
 
+  }
+
+  public function getPrependPath() {
+    return $this->getFullPath() . DIRECTORY_SEPARATOR;
+  }
+
+  public function getWorkingPath() {
+    return NULL;
   }
 }

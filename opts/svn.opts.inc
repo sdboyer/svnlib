@@ -15,6 +15,10 @@
  *
  */
 abstract class SvnOpt implements CLICommandOpt {
+  /**
+   *
+   * @var SvnCommand
+   */
   protected $sc;
   protected $arg = '';
   protected $concatenator = ' ';
@@ -141,13 +145,14 @@ class SvnOptTargets extends SvnOpt {
   }
 
   public function addTarget($target, $rev = NULL) {
+    $string = $this->sc->svnRoot->getPrependPath();
     // FIXME what's the proper approach to escaping input here?
     if ($rev !== NULL) {
       $this->usingRevs = TRUE;
-      $string = $target . '@' . $rev;
+      $string .= $target . '@' . $rev;
     }
     else {
-      $string = $target;
+      $string .= $target;
     }
     fwrite($this->mp, $string . "\n");
     return $this;
@@ -203,7 +208,9 @@ class SvnOptTarget extends SvnOpt {
   }
 
   public function getShellString() {
-    return escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
+    $string = $this->sc->svnRoot->getPrependPath();
+    $string .= escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
+    return $string;
   }
 }
 

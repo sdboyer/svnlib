@@ -49,7 +49,7 @@ abstract class SvnCommand implements CLICommand {
 
   /**
    *
-   * @var SvnWorkingCopy
+   * @var SvnInstance
    */
   protected $svnRoot;
 
@@ -151,7 +151,7 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, (string) $this->svnRoot, NULL);
+    $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
   }
 
   /**
