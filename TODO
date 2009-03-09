@@ -16,3 +16,6 @@ X = done
   + Implement a checking system that ensures some opts are passed when failure
     to pass those opts will result in a hang - such as failing to pass a message
     to the a commit.
+
+  + Get (some of) the global-level svn commands attached nicely to the
+    SvnInstance classes.
