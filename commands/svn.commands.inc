@@ -44,61 +44,7 @@ abstract class SvnCommand implements CLICommand {
   const NO_AUTH_CACHE     = 0x08000;
   const NON_INTERACTIVE   = 0x10000;
 
-  protected $switchInfo = array(
-    self::VERBOSE => array(
-      'shell string' => '-v',
-    ),
-    self::INCREMENTAL => array(
-      'shell string' => '--incremental',
-      'requires' => array(self::XML),
-    ),
-    self::XML => array(
-      'shell string' => '--xml',
-    ),
-    self::FORCE => array(
-      'shell string' => '--force',
-    ),
-    self::FORCE_LOG => array(
-      'shell string' => '--force-log',
-    ),
-    self::DRY_RUN => array(
-      'shell string' => '--dry-run',
-    ),
-    self::STOP_ON_COPY => array(
-      'shell string' => '--stop-on-copy',
-    ),
-    self::USE_MERGE_HISTORY => array(
-      'shell string' => '-g',
-    ),
-    self::REVPROP => array(
-      'shell string' => '--revprop',
-      'requires' => array(self::REVISION),
-    ),
-    self::QUIET => array(
-      'shell string' => '-q',
-    ),
-    self::PARENTS => array(
-      'shell string' => '--parents',
-    ),
-    self::NO_IGNORE => array(
-      'shell string' => '--no-ignore',
-    ),
-    self::USE_ANCESTRY => array(
-      'shell string' => '--stop-on-copy',
-    ),
-    self::IGNORE_EXTERNALS => array(
-      'shell string' => '--ignore-externals',
-    ),
-    self::AUTO_PROPS => array(
-      'shell string' => '--auto-props',
-    ),
-    self::NO_AUTH_CACHE => array(
-      'shell string' => '--no-auth-cache',
-    ),
-    self::NON_INTERACTIVE => array(
-      'shell string' => '--non-interactive',
-    ),
-  );
+  protected $switchInfo = array();
   public $retContainer, $cmds = array();
 
   /**
@@ -117,11 +63,72 @@ abstract class SvnCommand implements CLICommand {
 
   public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
     $this->svnRoot = &$svnRoot;
-    // $this->retContainer = new SplObjectMap();
+    
+    // Set up the cmdSwitches array for use.
+    $this->setSwitches();
 
     if ($defaults) {
       $this->setDefaults();
     }
+
+  }
+
+  protected function setSwitches() {
+    $this->cmdSwitches = array(
+      self::VERBOSE => array(
+        'shell string' => '-v',
+      ),
+      self::INCREMENTAL => array(
+        'shell string' => '--incremental',
+        'requires' => array(self::XML),
+      ),
+      self::XML => array(
+        'shell string' => '--xml',
+      ),
+      self::FORCE => array(
+        'shell string' => '--force',
+      ),
+      self::FORCE_LOG => array(
+        'shell string' => '--force-log',
+      ),
+      self::DRY_RUN => array(
+        'shell string' => '--dry-run',
+      ),
+      self::STOP_ON_COPY => array(
+        'shell string' => '--stop-on-copy',
+      ),
+      self::USE_MERGE_HISTORY => array(
+        'shell string' => '-g',
+      ),
+      self::REVPROP => array(
+        'shell string' => '--revprop',
+        'requires' => array(self::REVISION),
+      ),
+      self::QUIET => array(
+        'shell string' => '-q',
+      ),
+      self::PARENTS => array(
+        'shell string' => '--parents',
+      ),
+      self::NO_IGNORE => array(
+        'shell string' => '--no-ignore',
+      ),
+      self::USE_ANCESTRY => array(
+        'shell string' => '--stop-on-copy',
+      ),
+      self::IGNORE_EXTERNALS => array(
+        'shell string' => '--ignore-externals',
+      ),
+      self::AUTO_PROPS => array(
+        'shell string' => '--auto-props',
+      ),
+      self::NO_AUTH_CACHE => array(
+        'shell string' => '--no-auth-cache',
+      ),
+      self::NON_INTERACTIVE => array(
+        'shell string' => '--non-interactive',
+      ),
+    );
   }
 
   /**
@@ -565,6 +572,13 @@ class SvnLog extends SvnRead {
   protected $command = 'log';
   public $parserClass = 'SvnLogParser';
 
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::WITH_ALL_REVPROPS] = array(
+      'shell string' => '--with-all-revprops',
+    );
+  }
+
   public function stopOnCopy() {
     $this->cmdSwitches ^= self::STOP_ON_COPY;
   }
@@ -579,6 +593,13 @@ class SvnStatus extends SvnRead {
   const SHOW_UPDATES = 0x20000;
   
   protected $command = 'status';
+
+  public function setSwitches() {
+    parent::setSwitches();
+    $this->cmdSwitches[self::SHOW_UPDATES] = array(
+      'shell string' => '--show-updates',
+    );
+  }
 }
 
 class SvnMerge extends SvnWrite {
