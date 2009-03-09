@@ -28,3 +28,24 @@ class SplObjectMap extends SplObjectStorage implements ArrayAccess {
     parent::detach($o);
   }
 }
+
+interface CLI {
+  public function getWorkingPath();
+}
+
+interface CLICommand {
+  public function prepare();
+  public function execute();
+}
+
+interface CLICommandOpt {
+  public function getShellString();
+}
+
+interface CLIPipeStdIn {
+
+}
+
+interface CLIPipeStdOut {
+
+}

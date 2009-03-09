@@ -6,20 +6,6 @@ require_once dirname(__FILE__) . '/parsers.inc';
 require_once dirname(__FILE__) . '/commands/svn.commands.inc';
 require_once dirname(__FILE__) . '/opts/svn.opts.inc';
 
-/*interface CLI {
-  const IS_SWITCH = 0x0001;
-  public function getVersion();
-}*/
-
-interface CLICommand {
-  public function prepare();
-  public function execute();
-}
-
-interface CLICommandOpt {
-  public function getShellString();
-}
-
 /**
  * Abstract class that allows for commands that can be used on both an svn repo
  * and working copy to be handled via inheritance.
