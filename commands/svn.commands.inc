@@ -349,6 +349,7 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function prepSwitch($switch, $info) {
     $this->cmds[$switch] = $info['shell string'];
+    // TODO consider killing this entirely; really, it's babysitting broken code
     if (!empty($info['requires'])) {
       foreach ($info['requires'] as $req_switch) {
         if (!$this->cmdSwitches & $req_switch && empty($this->cmds[$req_switch])) {
@@ -461,11 +462,10 @@ abstract class SvnRead extends SvnCommand {
   
   /**
    * Adds an operative revision to the currently queuing command. Note that
-   * operative revisions are somewhat less intuitive than peg revisions, but peg
-   * revisions tend to be more intuitive. If you have any doubts about whether
-   * to use peg or operative revisions, you should read the subversion manual
-   * for clarification of the differences; barring that, peg revisions are
-   * probably the safer bet.
+   * operative revisions are somewhat less intuitive than peg revisions. If you
+   * have any doubts about whether to use peg or operative revisions, you should
+   * either read the subversion manual for clarification of the differences, or
+   * simply use peg revisions probably the safer bet.
    *
    * @param mixed $op_rev1
    * @param mixed $op_rev2
@@ -510,8 +510,6 @@ abstract class SvnRead extends SvnCommand {
    * Prepares (if necessary) all the various dimensions of the cli invocation's
    * state, then fires up a process and gets into output and/or error handling.
    *
-   * @see CLICommand::execute()
-   *
    * @param bool $fluent
    *  Indicates whether or not this method should behave fluently (should return
    *  $this instead of the possibly parsed return value). Defaults to FALSE.
@@ -552,7 +550,6 @@ abstract class SvnRead extends SvnCommand {
 class SvnInfo extends SvnRead {
   protected $command = 'info';
   public $parserClass = 'SvnInfoXMLParser';
-  // protected $target = array();
 
   public function revision($rev1, $rev2 = NULL) {
     if (!is_null($rev2)) {
