@@ -1,14 +1,18 @@
 Svnlib TODO list. Very rough!
 
-  - Implement a caching mechanism. One approach would be creating a class that
++ = todo
+X = done
+
+  + Finish implementing all the
+
+  + Implement a caching mechanism. One approach would be creating a class that
     implements ArrayAccess as a frontend to give the outward appearance of a
     seamless array with all the accumulated results from a particular command.
   
-  - Add support for config dirs. And make it smart.
+  + Make config dir handling more intelligent.
   
-  - Finish actually implementing all the 
-  
-  - Devise some approach to handling the differences between svn 1.4 and 1.5 
+  + Devise some approach to handling the differences between svn 1.4 and 1.5
 
-  - Consider changing CLICommandOpt::getShellString() to just mandating an
-    implementation of __toString()?
+  + Implement a checking system that ensures some opts are passed when failure
+    to pass those opts will result in a hang - such as failing to pass a message
+    to the a commit.
