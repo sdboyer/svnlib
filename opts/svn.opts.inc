@@ -10,7 +10,7 @@
  */
 
 /**
- * Parent class for opts that can be used by various Subversion `svn` subcommands.
+ * Parent class for opts that can be used by various svn subcommands.
  * @author sdboyer
  *
  */
@@ -23,8 +23,8 @@ abstract class SvnOpt implements CLICommandOpt {
   protected $arg = '';
   protected $concatenator = ' ';
 
-  public function __construct(SvnCommand &$sc, $arg) {
-    $this->sc = &$sc;
+  public function __construct(SvnCommand $sc, $arg) {
+    $this->sc = $sc;
     if (method_exists($this, 'checkArg')) {
       if ($this->checkArg($arg)) {
         $this->arg = $arg;
@@ -70,12 +70,12 @@ class SvnOptRevision extends SvnOpt {
     return TRUE;
   }
 
-  public function prepare() {
-    if ($this->cmdOpts[self::TARGETS] && $this->cmdOpts[self::TARGETS]->usingRevs) {
-      throw new Exception('Setting explicit revision numbers (via -r, that is, SvnOptRevision) will override the revisions explicitly specified per target.', E_WARNING);
-    }
-    return $this;
-  }
+//  public function prepare() {
+//    if ($this->cmdOpts[self::TARGETS] && $this->cmdOpts[self::TARGETS]->usingRevs) {
+//      throw new Exception('Setting explicit revision numbers (via -r, that is, SvnOptRevision) will override the revisions explicitly specified per target.', E_WARNING);
+//    }
+//    return $this;
+//  }
 
   public function getShellString() {
     $string = $this->opt . escapeshellarg($this->arg);
@@ -145,7 +145,7 @@ class SvnOptTargets extends SvnOpt {
   }
 
   public function addTarget($target, $rev = NULL) {
-    $string = $this->sc->svnRoot->getPrependPath();
+    $string = $this->sc->getPrependPath();
     // FIXME what's the proper approach to escaping input here?
     if ($rev !== NULL) {
       $this->usingRevs = TRUE;
@@ -208,7 +208,7 @@ class SvnOptTarget extends SvnOpt {
   }
 
   public function getShellString() {
-    $string = $this->sc->svnRoot->getPrependPath();
+    $string = $this->sc->getPrependPath();
     $string .= escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
     return $string;
   }
@@ -221,7 +221,7 @@ class SvnOptTarget extends SvnOpt {
  * FIXME I'm a little uncomfortable about an inheritance hierarchy where this
  * has SvnOpt as its parent. Same goes for SvnPassword, SvnConfigdir.
  */
-class SvnOptUsername extends SvnOpt {
+class SvnOptUsername  extends SvnOpt {
   protected $ordinal = 1;
   protected $opt = '--username';
 }
