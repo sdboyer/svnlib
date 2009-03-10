@@ -138,8 +138,6 @@ abstract class SvnCommand implements CLICommand {
    */
   public function setDefaults() {
     $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
-    // @todo configdir needs to be done more intelligently
-    $this->configDir(dirname(__FILE__) . '/../configdir');
     return $this;
   }
 
@@ -318,9 +316,9 @@ abstract class SvnCommand implements CLICommand {
     $this->processOpts($opts, $this->cmdOpts);
     asort($opts, SORT_NUMERIC);
     $this->cmds = array_merge($this->cmds, array_keys($opts));
-    if ($this->svnRoot instanceof SvnWorkingCopy) {
-      $this->cmds = array_merge($this->svnRoot->prepare(), $this->cmds);
-    }
+//    if ($this->svnRoot instanceof SvnWorkingCopy) {
+//      $this->cmds = array_merge($this->svnRoot->prepare(), $this->cmds);
+//    }
 
     array_unshift($this->cmds, 'svn', $this->command);
     return $fluent ? $this : $this->cmds;

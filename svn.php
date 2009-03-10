@@ -85,6 +85,7 @@ abstract class SvnInstance extends SplFileInfo implements CLI {
 class SvnWorkingCopy extends SvnInstance {
   protected $repoRoot;
   protected $latestRev;
+  public $username, $password, $configDir;
 
   const NO_AUTH_CACHE   = 0x001;
 
@@ -124,19 +125,6 @@ class SvnWorkingCopy extends SvnInstance {
     return NULL;
   }
 
-  public function prepare() {
-    // FIXME This borders on klugey in comparison to the relatively elegant
-    // systematicity of the rest of this library.
-    $opts = array();
-    foreach ($this->cmdOpts as $const => $opt) {
-      $opts[] = $opt->getShellString();
-    }
-    if ($this->cmdSwitches & self::NO_AUTH_CACHE) {
-      $opts[] = '--no-auth-cache';
-    }
-    return $opts;
-  }
-
   public function svn($subcommand, $defaults = NULL) {
     $fullcommand = 'svn' . $subcommand;
     if (!class_exists($fullcommand)) {
@@ -144,6 +132,14 @@ class SvnWorkingCopy extends SvnInstance {
       return;
     }
     $this->cmd = new $fullcommand($this, is_null($defaults) ? $this->defaults : $defaults);
+
+    // Add any global working copy opts that are set.
+    foreach (array('username', 'password', 'configDir') as $prop) {
+      if (!empty($this->$prop)) {
+        $this->cmd->$prop($this->$prop);
+      }
+    }
+
     return $this->cmd;
   }
 }
