@@ -12,7 +12,7 @@ require_once dirname(__FILE__) . '/opts/svn.opts.inc';
  * @author sdboyer
  *
  */
-abstract class SvnInstance extends SplFileInfo implements CLI {
+abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   protected $defaults = TRUE;
   protected $cmd;
   protected $cmdSwitches = 0, $cmdOpts = array();

@@ -29,7 +29,7 @@ class SplObjectMap extends SplObjectStorage implements ArrayAccess {
   }
 }
 
-interface CLI {
+interface CLIWrapper {
   public function getWorkingPath();
 }
 
@@ -39,6 +39,7 @@ interface CLICommand {
 }
 
 interface CLICommandOpt {
+  public function getOrdinal();
   public function getShellString();
 }
 
