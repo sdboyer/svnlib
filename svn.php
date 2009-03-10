@@ -137,33 +137,13 @@ class SvnWorkingCopy extends SvnInstance {
     return $opts;
   }
 
-  /**
-   *
-   * @param bool $defaults
-   * @return SvnInfo
-   */
-  public function svnInfo($defaults = NULL) {
-    $this->cmd = new SvnInfo($this, is_null($defaults) ? $this->defaults : $defaults);
-    return $this->cmd;
-  }
-
-  /**
-   *
-   * @param bool $defaults
-   * @return SvnLog
-   */
-  public function svnLog($defaults = NULL) {
-    $this->cmd = new SvnLog($this, is_null($defaults) ? $this->defaults : $defaults);
-    return $this->cmd;
-  }
-
-  /**
-   *
-   * @param bool $defaults
-   * @return SvnList 
-   */
-  public function svnList($defaults = NULL) {
-    $this->cmd = new SvnList($this, is_null($defaults) ? $this->defaults : $defaults);
+  public function svn($subcommand, $defaults = NULL) {
+    $fullcommand = 'svn' . $subcommand;
+    if (!class_exists($fullcommand)) {
+      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+      return;
+    }
+    $this->cmd = new $fullcommand($this, is_null($defaults) ? $this->defaults : $defaults);
     return $this->cmd;
   }
 }
