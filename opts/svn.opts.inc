@@ -243,3 +243,43 @@ class SvnOptConfigDir extends SvnOpt {
     return TRUE;
   }
 }
+
+class SvnOptExtensions extends SvnOpt {
+  protected $ordinal = 6;
+  protected $opt = '-x';
+}
+
+class SvnOptChangelist extends SvnOpt {
+  protected $ordinal = 7;
+  protected $opt = '--changelist';
+}
+
+class SvnOptMessage extends SvnOpt {
+  protected $ordinal = 8;
+  protected $opt = '-m';
+}
+
+class SvnOptFile extends SvnOpt {
+  protected $ordinal = 9;
+  protected $opt = '-F';
+}
+
+class SvnOptEncoding extends SvnOpt {
+  protected $ordinal = 10;
+  protected $opt = '--encoding';
+}
+
+class SvnOptWithRevprop extends SvnOpt {
+  protected $ordinal = 11;
+  protected $opt = '--with-revprop';
+}
+
+class SvnOptNativeEol extends SvnOpt {
+  protected $ordinal = 12;
+  protected $opt = '--native-eol';
+}
+
+class SvnOptShowRevs extends SvnOpt {
+  protected $ordinal = 13;
+  protected $opt = '--show-revs';
+}
