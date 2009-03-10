@@ -27,8 +27,6 @@ abstract class SvnInstance extends SplFileInfo implements CLI {
     }
     $this->retContainer = new SplObjectMap();
     $this->errContainer = new SplObjectMap();
-    $this->cmdContainer = new SplObjectMap();
-    $this->invocations = new SplObjectMap();
   }
 
   public function defaults($use = TRUE) {
@@ -90,12 +88,18 @@ class SvnWorkingCopy extends SvnInstance {
   const NO_AUTH_CACHE   = 0x001;
 
   protected function getInfo() {
+    $orig_subpath = $this->subPath;
+    $this->subPath = NULL;
+
     $info = new SvnInfo($this, FALSE);
     $output = $info->target('.')->configDir(dirname(__FILE__) . '/configdir')->execute();
+
     preg_match('/^Repository Root: (.*)\n/m', $output, $root);
     $this->repoRoot = $root[1];
     preg_match('/^Revision: (.*)\n/m', $output, $rev);
     $this->latestRev = (int) $rev[1];
+
+    $this->subPath = $orig_subpath;
   }
 
   public function __get($name) {

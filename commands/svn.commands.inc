@@ -62,7 +62,7 @@ abstract class SvnCommand implements CLICommand {
   protected $cmdOpts = array();
 
   public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
-    $this->svnRoot = &$svnRoot;
+    $this->svnRoot = $svnRoot;
     
     // Set up the cmdSwitches array for use.
     $this->setSwitches();
@@ -103,6 +103,14 @@ abstract class SvnCommand implements CLICommand {
   public function setDefaults() {
     $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
     return $this;
+  }
+
+  /**
+   *Temporary klugey func
+   * @return <type>
+   */
+  public function getPrependPath() {
+    return $this->svnRoot->getPrependPath();
   }
 
   /**
@@ -649,10 +657,6 @@ class SvnPropdel extends SvnWrite {
 
 class SvnPropedit extends SvnWrite {
   protected $command = 'propedit';
-}
-
-class SvnPropget extends SvnRead {
-  protected $command = 'propget';
 }
 
 class SvnProplist extends SvnRead {
