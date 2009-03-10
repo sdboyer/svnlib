@@ -3,7 +3,7 @@ Svnlib TODO list. Very rough!
 + = todo
 X = done
 
-  + Finish implementing all the
+  + Finish implementing all the svn subcommands and opts!
 
   + Implement a caching mechanism. One approach would be creating a class that
     implements ArrayAccess as a frontend to give the outward appearance of a
@@ -19,3 +19,7 @@ X = done
 
   + Get (some of) the global-level svn commands attached nicely to the
     SvnInstance classes.
+
+  + Include (optionally?) some memory optimization techniques that force object
+    destruction notwithstanding the circular references. Which could mean
+    refactoring out the circular references.
