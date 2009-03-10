@@ -74,60 +74,24 @@ abstract class SvnCommand implements CLICommand {
   }
 
   protected function setSwitches() {
-    $this->cmdSwitches = array(
-      self::VERBOSE => array(
-        'shell string' => '-v',
-      ),
-      self::INCREMENTAL => array(
-        'shell string' => '--incremental',
-        'requires' => array(self::XML),
-      ),
-      self::XML => array(
-        'shell string' => '--xml',
-      ),
-      self::FORCE => array(
-        'shell string' => '--force',
-      ),
-      self::FORCE_LOG => array(
-        'shell string' => '--force-log',
-      ),
-      self::DRY_RUN => array(
-        'shell string' => '--dry-run',
-      ),
-      self::STOP_ON_COPY => array(
-        'shell string' => '--stop-on-copy',
-      ),
-      self::USE_MERGE_HISTORY => array(
-        'shell string' => '-g',
-      ),
-      self::REVPROP => array(
-        'shell string' => '--revprop',
-        'requires' => array(self::REVISION),
-      ),
-      self::QUIET => array(
-        'shell string' => '-q',
-      ),
-      self::PARENTS => array(
-        'shell string' => '--parents',
-      ),
-      self::NO_IGNORE => array(
-        'shell string' => '--no-ignore',
-      ),
-      self::USE_ANCESTRY => array(
-        'shell string' => '--stop-on-copy',
-      ),
-      self::IGNORE_EXTERNALS => array(
-        'shell string' => '--ignore-externals',
-      ),
-      self::AUTO_PROPS => array(
-        'shell string' => '--auto-props',
-      ),
-      self::NO_AUTH_CACHE => array(
-        'shell string' => '--no-auth-cache',
-      ),
-      self::NON_INTERACTIVE => array(
-        'shell string' => '--non-interactive',
-      ),
+    $this->switchInfo = array(
+      self::VERBOSE           => '-v',
+      self::INCREMENTAL       => '--incremental',
+      self::XML               => '--xml',
+      self::FORCE             => '--force',
+      self::FORCE_LOG         => '--force-log',
+      self::DRY_RUN           => '--dry-run',
+      self::STOP_ON_COPY      => '--stop-on-copy',
+      self::USE_MERGE_HISTORY => '-g',
+      self::REVPROP           => '--revprop',
+      self::QUIET             => '-q',
+      self::PARENTS           => '--parents',
+      self::NO_IGNORE         => '--no-ignore',
+      self::USE_ANCESTRY      => '--use-ancestry',
+      self::IGNORE_EXTERNALS  => '--ignore-externals',
+      self::AUTO_PROPS        => '--auto-props',
+      self::NO_AUTH_CACHE     => '--no-auth-cache',
+      self::NON_INTERACTIVE   => '--non-interactive',
     );
   }
 
@@ -307,7 +271,7 @@ abstract class SvnCommand implements CLICommand {
 
     foreach ($this->switchInfo as $switch => $info) {
       if ($this->cmdSwitches & $switch) {
-        $this->prepSwitch($switch, $info);
+        $this->cmds[$switch] = $info;
       }
     }
     ksort($this->cmds);
@@ -343,24 +307,6 @@ abstract class SvnCommand implements CLICommand {
       // better, smarter system that leverages an ArrayObject + SplObjectStorage
       // structure is the eventual goal.
       $opts[$arg->getShellString()] = $arg->getOrdinal();
-    }
-  }
-
-  /**
-   * Helper function for SvnCommand::prepare().
-   * @param $switch
-   * @param $info
-   * @return void
-   */
-  protected function prepSwitch($switch, $info) {
-    $this->cmds[$switch] = $info['shell string'];
-    // TODO consider killing this entirely; really, it's babysitting broken code
-    if (!empty($info['requires'])) {
-      foreach ($info['requires'] as $req_switch) {
-        if (!$this->cmdSwitches & $req_switch && empty($this->cmds[$req_switch])) {
-          $this->prepSwitch($req_switch, $this->switchInfo[$req_switch]);
-        }
-      }
     }
   }
   
@@ -572,9 +518,7 @@ class SvnLog extends SvnRead {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::WITH_ALL_REVPROPS] = array(
-      'shell string' => '--with-all-revprops',
-    );
+    $this->switchInfo[self::WITH_ALL_REVPROPS] = '--with-all-revprops';
   }
 
   public function stopOnCopy() {
@@ -594,9 +538,7 @@ class SvnStatus extends SvnRead {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::SHOW_UPDATES] = array(
-      'shell string' => '--show-updates',
-    );
+    $this->switchInfo[self::SHOW_UPDATES] = '--show-updates';
   }
 }
 
@@ -608,12 +550,8 @@ class SvnMerge extends SvnWrite {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::REINTEGRATE] = array(
-      'shell string' => '--reintegrate',
-    );
-    $this->cmdSwitches[self::RECORD_ONLY] = array(
-      'shell string' => '--record-only',
-    );
+    $this->switchInfo[self::REINTEGRATE] = '--reintegrate';
+    $this->switchInfo[self::RECORD_ONLY] = '--record-only';
   }
 }
 
@@ -624,9 +562,7 @@ class SvnPropGet extends SvnRead {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::STRICT] = array(
-      'shell string' => '--strict',
-    );
+    $this->switchInfo[self::STRICT] = '--strict';
   }
 }
 
@@ -637,9 +573,7 @@ class SvnCommit extends SvnWrite {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::NO_UNLOCK] = array(
-      'shell string' => '--no-unlock',
-    );
+    $this->switchInfo[self::NO_UNLOCK] = '--no-unlock';
   }
 }
 
@@ -649,9 +583,7 @@ class SvnDelete extends SvnWrite {
 
   public function setSwitches() {
     parent::setSwitches();
-    $this->cmdSwitches[self::KEEP_LOCAL] = array(
-      'shell string' => '--keep-local',
-    );
+    $this->switchInfo[self::KEEP_LOCAL] = '--keep-local';
   }
 }
 
