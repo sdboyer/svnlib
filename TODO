@@ -9,7 +9,7 @@ X = done
     implements ArrayAccess as a frontend to give the outward appearance of a
     seamless array with all the accumulated results from a particular command.
   
-  + Make config dir handling more intelligent.
+  X Make config dir handling more intelligent.
   
   + Devise some approach to handling the differences between svn 1.4 and 1.5
 
@@ -23,3 +23,5 @@ X = done
   + Include (optionally?) some memory optimization techniques that force object
     destruction notwithstanding the circular references. Which could mean
     refactoring out the circular references.
+
+  + Implement arbitrary piping system.

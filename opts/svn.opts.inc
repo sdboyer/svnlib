@@ -247,6 +247,14 @@ class SvnOptConfigDir extends SvnOpt {
 class SvnOptExtensions extends SvnOpt {
   protected $ordinal = 6;
   protected $opt = '-x';
+
+  protected function checkArg($arg) {
+    if (!in_array($arg, array('-u', '-b', '-w', '--ignore-eol-style', '-p'))) {
+      throw new Exception("An invalid arg, '$arg', was passed to SvnOptExtensions. Note that only the short forms of the args are permitted.", E_RECOVERABLE_ERROR);
+      return FALSE;
+    }
+    return TRUE;
+  }
 }
 
 class SvnOptChangelist extends SvnOpt {
@@ -262,6 +270,12 @@ class SvnOptMessage extends SvnOpt {
 class SvnOptFile extends SvnOpt {
   protected $ordinal = 9;
   protected $opt = '-F';
+
+  protected function checkArg($arg) {
+    if (!is_file($arg)) {
+      throw new Exception('Non-file argument passed to SvnOptFile.', E_RECOVERABLE_ERROR);
+    }
+  }
 }
 
 class SvnOptEncoding extends SvnOpt {
