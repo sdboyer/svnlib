@@ -25,3 +25,8 @@ X = done
     refactoring out the circular references.
 
   + Implement arbitrary piping system.
+
+  + Consider refactoring some of the flexibility at the SvnCommand::prepare()
+    level - it's now seeming difficult to imagine a use case where that's really
+    necessary, as most things can be accomplished indirectly using execute() and
+    clear().

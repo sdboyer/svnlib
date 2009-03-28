@@ -7,39 +7,53 @@ require_once dirname(__FILE__) . '/commands/svn.commands.inc';
 require_once dirname(__FILE__) . '/opts/svn.opts.inc';
 
 /**
- * Abstract class that allows for commands that can be used on both an svn repo
- * and working copy to be handled via inheritance.
+ * Abstract parent class for a Subversion 'instance,' i.e., working copy or
+ * repository.
+ *
+ * SvnWorkingCopy and SvnRepository are the concrete subclasses that extend this
+ * class to provide that functionality.
+ * 
  * @author sdboyer
  *
  */
 abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
-  protected $defaults = TRUE;
+  public $defaults = TRUE;
   protected $cmd;
-  protected $cmdSwitches = 0, $cmdOpts = array();
-  protected $cache = array();
-  public $invocations, $cmdContainer, $retContainer, $errContainer;
+  // protected $cmdSwitches = 0, $cmdOpts = array();
+  // public $invocations, $cmdContainer, $retContainer, $errContainer;
   protected $subPath = '';
+  public $username, $password, $configDir;
 
   public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
     if ($verify) {
       $this->verify();
     }
-    $this->retContainer = new SplObjectMap();
-    $this->errContainer = new SplObjectMap();
+    $this->getInfo();
+    // $this->retContainer = new SplObjectMap();
+    // $this->errContainer = new SplObjectMap();
   }
 
-  public function defaults($use = TRUE) {
-    $this->defaults = $use;
-    return $this;
+  protected function getInfo() {
+    $orig_subpath = $this->subPath;
+    $this->subPath = NULL;
+
+    $output = $this->svn('info', FALSE)->target('.')->configDir(dirname(__FILE__) . '/configdir')->execute();
+
+    preg_match('/^Repository Root: (.*)\n/m', $output, $root);
+    $this->repoRoot = $root[1];
+    preg_match('/^Revision: (.*)\n/m', $output, $rev);
+    $this->latestRev = (int) $rev[1];
+
+    $this->subPath = $orig_subpath;
   }
 
   /**
    * Set a path, relative to the base path that was passed in to the SvnInstance
    * constructor, that should be used as the base path for all path-based
    * operations. Primarily useful for specifying a particular branch or tag that
-   * operations should be run against in a fashion that will be transparent to
-   * the subcommand invocations.
+   * operations should be run against in a way that will be transparent to the
+   * subcommand invocations.
    *
    * IMPORTANT NOTE: internal handling of subpaths becomes copmlex if you change
    * the subpath while in the midst of queuing up a command. This internal
@@ -48,18 +62,16 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param string $path
    */
   public function setSubPath($path) {
-    $this->subPath = $path;
+    $this->subPath = trim($path, '/');
   }
 
   public function verify() {
     if (!$this->isDir()) {
-      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPath() . '" was provided.', E_RECOVERABLE_ERROR);
+      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPathname() . '" was provided.', E_RECOVERABLE_ERROR);
     }
-  }
+  }  
 
-  abstract protected function getInfo();
-
-  public function getFullPath() {
+  public function getRootPath() {
     if (empty($this->subPath)) {
       return (string) $this;
     }
@@ -69,6 +81,13 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   }
 
   abstract public function getPrependPath();
+  /**
+   *
+   * @param string $subcommand
+   * @param bool $defaults
+   * @return SvnCommand
+   */
+  abstract public function svn($subcommand, $defaults = NULL);
 }
 
 /**
@@ -83,23 +102,11 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
 class SvnWorkingCopy extends SvnInstance {
   protected $repoRoot;
   protected $latestRev;
-  public $username, $password, $configDir;
 
   const NO_AUTH_CACHE   = 0x001;
 
-  protected function getInfo() {
-    $orig_subpath = $this->subPath;
-    $this->subPath = NULL;
-
-    $info = new SvnInfo($this, FALSE);
-    $output = $info->target('.')->configDir(dirname(__FILE__) . '/configdir')->execute();
-
-    preg_match('/^Repository Root: (.*)\n/m', $output, $root);
-    $this->repoRoot = $root[1];
-    preg_match('/^Revision: (.*)\n/m', $output, $rev);
-    $this->latestRev = (int) $rev[1];
-
-    $this->subPath = $orig_subpath;
+  public function getRepository() {
+    return new SvnRepository($this->repoRoot);
   }
 
   public function __get($name) {
@@ -111,7 +118,7 @@ class SvnWorkingCopy extends SvnInstance {
         }
         return $this->$name;
     }
-    return NULL;
+    return;
   }
 
   public function verify() {
@@ -122,20 +129,19 @@ class SvnWorkingCopy extends SvnInstance {
   }
 
   public function getWorkingPath() {
-    return $this->getFullPath();
+    return $this->getRootPath();
   }
 
   public function getPrependPath() {
-    return NULL;
+    return;
   }
 
   public function svn($subcommand, $defaults = NULL) {
-    $fullcommand = 'svn' . $subcommand;
-    if (!class_exists($fullcommand)) {
+    $classname = 'svn' . $subcommand;
+    if (!class_exists($classname)) {
       throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
-      return;
     }
-    $this->cmd = new $fullcommand($this, is_null($defaults) ? $this->defaults : $defaults);
+    $this->cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
 
     // Add any global working copy opts that are set.
     foreach (array('username', 'password', 'configDir') as $prop) {
@@ -148,25 +154,118 @@ class SvnWorkingCopy extends SvnInstance {
   }
 }
 
+/**
+ * Defines a Subversion repository location, and allows commands ordinarily
+ * associated with the command line to be invoked on it.
+ *
+ * Note that this class is a bad SplFileInfo citizen, and calling certain of the
+ * SplFileInfo methods on it WILL cause a php fatal error. We use it because the
+ * methods SplFileInfo provides that do work are very handy, and it would be
+ * foolish to reimplement in userland what's already been done in C.
+ */
 class SvnRepository extends SvnInstance {
+  public static $protocols = array(
+    'http' => array(
+      'write capable' => FALSE,
+    ),
+    'https' => array(
+      'write capable' => FALSE,
+    ),
+    'svn' => array(
+      'write capable' => FALSE,
+    ),
+    'svn+ssh' => array(
+      'write capable' => TRUE,
+    ),
+    'file' => array(
+      'write capable' => TRUE,
+    ),
+  );
+
+  protected $protocol;
+
+//  public function __construct($url, $verify = TRUE) {
+//    parent::__construct($url, $verify);
+//  }
 
   public function verify() {
     // Run a fast, low-overhead operation, verifying this is a working svn repository.
-    system('svnadmin lstxns ' . escapeshellarg($this->getPath()), $exit);
+    system('svnadmin lstxns ' . escapeshellarg($this->getPathname()), $exit);
     if ($exit) {
-      throw new Exception($this->getPath() . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
+      throw new Exception($this->getPathname() . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
 
   protected function getInfo() {
-
+    parent::getInfo();
+    $pieces = explode('://', (string) $this);
+    $this->protocol = $pieces[0];
   }
 
+  /**
+   * Get the path to be prepended to individual file items
+   * @return string
+   */
   public function getPrependPath() {
-    return $this->getFullPath() . DIRECTORY_SEPARATOR;
+    return $this->getRootPath() . DIRECTORY_SEPARATOR;
   }
 
   public function getWorkingPath() {
     return NULL;
   }
+
+  public function svn($subcommand, $defaults = NULL) {
+    $classname = 'Svn' . $subcommand;
+    if (!class_exists($classname)) {
+      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+    }
+    $reflection = new ReflectionClass($classname);
+    if (!$reflection->getStaticPropertyValue('operatesOnRepositories')) {
+      throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
+    }
+    if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
+      throw new Exception("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
+    }
+
+    $this->cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
+    return $this->cmd;
+  }
+
+  /**
+   * Indicate whether or not it is possible to perform write operations directly
+   * on the repository.
+   *
+   * @return bool
+   */
+  public function isWritable() {
+    return self::$protocols[$this->protocol]['write capable'];
+  }
+
+  public function svnadmin($subcommand, $defaults = NULL) {
+    $classname = 'Svnadmin' . $subcommand;
+    if (!class_exists($classname)) {
+      throw new Exception("Invalid svnadmin subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+    }
+
+    $this->cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
+    return $this->cmd;
+  }
+}
+
+/**
+ * Helper function that retrieves an actual Subversion repository as an
+ * SvnInstance object, even if a working copy path is passed in.
+ *
+ * @param string $path
+ * @return SvnRepository
+ */
+function svnlib_get_repository($path) {
+  try {
+    $repo = new SvnRepository($path);
+  } catch (Exception $e) {
+    $wc = new SvnWorkingCopy($path);
+    $repo = $wc->getRepository();
+    unset($wc);
+  }
+  return $repo;
 }

@@ -1,14 +1,33 @@
 <?php
 
 /**
- * Pure stream-based parsers.
- */
-
-
-
-/**
  * XML-based parsers.
  */
+
+abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
+  protected $output;
+  
+
+  public function __construct() {
+
+  }
+
+  public function current() {
+    return $this->parse($this->getInnerIterator()->current());
+  }
+
+  public function openOutputHandle() {
+    $this->output = fopen('php://temp', 'rw');
+    return $this->output;
+  }
+
+  // abstract public function parseOutput();
+  abstract protected function parse($item);
+
+  public function procClose($destruct = FALSE) {
+    fclose($this->output);
+  }
+}
 
 /**
  * A class specifically tailored to parse the incremental xml output of an
@@ -17,56 +36,85 @@
  * @author sdboyer
  *
  */
-class SvnInfoXMLParser extends SimpleXMLIterator {
+class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
+  protected $raw;
 
-  public function current() {
-    $entry = parent::current();
-    $item = array();
-    $item['url'] = (string) $entry->url;
-    $item['repository_root'] = (string) $entry->repository->root;
-    $item['repository_uuid'] = (string) $entry->repository->uuid;
+  public function parseOutput() {
+    $this->raw = stream_get_contents($this->output);
+    parent::__construct(new SimpleXMLIterator($this->raw));
+  }
 
+  protected function parse($entry) {
+    $item = array(
+      'url'             => (string) $entry->url,
+      'repository_root' => (string) $entry->repository->root,
+      'repository_uuid' => (string) $entry->repository->uuid,
+      'type'            => (string) $entry['kind'],
+      'rev'             => intval((string) $entry['revision']), // current state of the item
+      'created_rev'     => intval((string) $entry->commit['revision']), // last edit
+      'last_author'     => (string) $entry->commit->author,
+      'time_t'          => strtotime((string) $entry->commit->date),
+    );
     if ($item['url'] == $item['repository_root']) {
       $item['path'] = '/';
     }
     else {
       $item['path'] = substr($item['url'], strlen($item['repository_root']));
     }
-    $item['type'] = (string) $entry['kind'];
-    $relative_path = (string) $entry['path'];
-    $item['rev'] = intval((string) $entry['revision']); // current state of the item
-    $item['created_rev'] = intval((string) $entry->commit['revision']); // last edit
-    $item['last_author'] = (string) $entry->commit->author;
-    $item['time_t'] = strtotime((string) $entry->commit->date);
+    // $relative_path = (string) $entry['path'];
     return $item;
   }
 
-  /**
-   * Override the parent implementation and always return FALSE on hasChildren,
-   * because we know we'll never need to recurse.
-   */
-  public function hasChildren() {
-    return FALSE;
+  public function seekDouble($rev = NULL, $path = NULL) {
+    $items = $query = array();
+    if (!is_null($rev)) {
+      $query[] = "@revision = '$rev'";
+    }
+    if (!is_null($path)) {
+      $query[] = "@path = '$rev'";
+    }
+    elseif (empty($query)) {
+      throw new Exception('No arguments provided for xpath query.', E_RECOVERABLE_ERROR);
+    }
+    foreach ($this->getInnerIterator()->xpath('/info/entry[' . implode(' and ', $query) . ']') as $entry) {
+      $item = $this->parse($entry);
+      $items[$item['path']] = $item;
+    }
+    return $items;
+  }
+
+  public function seek($rev) {
+    $items = array();
+    foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']")) as $item) {
+      $items[$item['path']] = $item;
+    }
+    return $items;
+  }
+
+  public function clear() {
+    unset($this->raw);
   }
 }
 
 
-class SvnLogParser extends IteratorIterator {
+class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
+  protected $raw;
   protected $rev;
-  public function __construct($xml) {
-    parent::__construct(new SimpleXMLIterator($xml));
+//  public function __construct($xml) {
+//    parent::__construct(new SimpleXMLIterator($xml));
+//  }
+//  public function current() {
+//    return $this->parse($this->getInnerIterator()->current());
+//  }
+
+  public function parseOutput() {
+    $this->raw = stream_get_contents($this->output);
+    parent::__construct(new SimpleXMLIterator($this->raw));
   }
 
-  public function current() {
-    $this->rev = $this->getInnerIterator()->current();
-    $revision = array();
-    $revision['rev'] = intval((string) $this->rev['revision']);
-    $revision['author'] = (string) $this->rev->author;
-    $revision['msg'] = rtrim((string) $this->rev->msg); // no trailing linebreaks
-    $revision['time_t'] = strtotime((string) $this->rev->date);
+  protected function parse($rev) {
     $paths = array();
-
-    foreach ($this->rev->paths->path as $logpath) {
+    foreach ($rev->paths->path as $logpath) {
       $path = array(
         'path' => (string) $logpath,
         'action' => (string) $logpath['action'],
@@ -79,8 +127,23 @@ class SvnLogParser extends IteratorIterator {
       }
       $paths[$path['path']] = $path;
     }
-    $revision['paths'] = $paths;
+
+    $revision = array(
+      'rev'     => intval((string) $rev['revision']),
+      'author'  => (string) $rev->author,
+      'msg'     => rtrim($rev->msg), // no trailing linebreaks
+      'time_t'  => strtotime($rev->date),
+      'paths'   => $paths,
+    );
     return $revision;
+  }
+
+  public function seek($position) {
+    return $this->parse($this->getInnerIterator()->xpath("/log/logentry[@revision='$position']"));
+  }
+
+  public function clear() {
+    unset($this->raw);
   }
 }
 

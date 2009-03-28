@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * Abstract parent class for a Subversion 'command' (technically a subcommand).
+ *
+ * Sets properties and methods that are shared across all commands, as well as
+ * some sane defaults.
+ *
  * @author sdboyer
  *
  */
@@ -44,8 +49,17 @@ abstract class SvnCommand implements CLICommand {
   const NO_AUTH_CACHE     = 0x08000;
   const NON_INTERACTIVE   = 0x10000;
 
+  // clear flags
+  const PRESERVE_CMD_SWITCHES = 0x001;
+  const PRESERVE_CMD_OPTS     = 0x002;
+  const PRESERVE_INT_SWITCHES = 0x004;
+
   protected $switchInfo = array();
-  public $retContainer, $cmds = array();
+  public $cmds = array();
+
+  protected $procDescriptor = array(
+      2 => array('pipe', 'w'),
+    );
 
   /**
    *
@@ -107,7 +121,7 @@ abstract class SvnCommand implements CLICommand {
 
   /**
    *Temporary klugey func
-   * @return <type>
+   * @return string
    */
   public function getPrependPath() {
     return $this->svnRoot->getPrependPath();
@@ -121,14 +135,17 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->procDescriptor, $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
+    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
   }
+
+  abstract protected function getProcDescriptor();
+  abstract protected function procHandle();
 
   /**
    * Wrapper for proc_close() that cleans up the currently running process.
    * @return void
    */
-  protected function procClose() {
+  protected function procClose($destruct = FALSE) {
     if (is_resource($this->process)) {
       foreach ($this->procPipes as $pipe) {
         fclose($pipe);
@@ -136,6 +153,48 @@ abstract class SvnCommand implements CLICommand {
       $this->procPipes = array();
       $this->process = proc_close($this->process);
     }
+  }
+
+  /**
+   * Flush the object of its internal data and state, readying it for a new
+   * command to be run.
+   * 
+   * This method can safely be called regardless of whether or not execute() has
+   * been called with the current object.
+   *
+   * @param int $preserve_flags
+   *  The contents of this bitmask determine which parts of the object's state
+   *  will be flushed. If no flags are passed, the entire internal state will be
+   *  flushed. Subclasses may define additional flags, but the top-level
+   *  abstract flags are as follows:
+   *    #- SvnCommand::PRESERVE_CMD_OPTS - passing this will cause all command
+   *       opts to be preserved. If the flag is not present, all opts are
+   *       forcibly unset, making them completely irretrievable.
+   *    #- SvnCommand::PRESERVE_CMD_SWITCHES - passing this will cause the
+   *       bitmask containing all the currently set command parameters to be
+   *       preserved.
+   *    #- SvnCommand::PRESERVE_INT_SWITCHES - passing this will cause the
+   *       bitmask reflecting the internal object configuration and state to be
+   *       preserved. The SvnCommand::PREPARED flag will always be turned off,
+   *       whether or not this flag is present.
+   * @return SvnCommand $this
+   */
+  public function clear($preserve_flags = 0) {
+    $this->procClose();
+    if (!$preserve_flags & self::PRESERVE_CMD_OPTS) {
+      unset($this->cmdOpts);
+      $this->cmdOpts = array();
+    }
+    if (!$preserve_flags & self::PRESERVE_CMD_SWITCHES) {
+      $this->cmdSwitches = 0;
+    }
+    if (!$preserve_flags & self::PRESERVE_INT_SWITCHES) {
+      $this->internalSwitches = 0;
+    }
+    // ALWAYS reset the prepared bit.
+    $this->internalSwitches &= ~self::PREPARED;
+
+    return $this;
   }
 
   /**
@@ -147,6 +206,23 @@ abstract class SvnCommand implements CLICommand {
     return system('svn -q --version');
   }
 
+  /**
+   * Internal state interrogating method that indicates whether or not there are
+   * any commands queuing that will be executed if SvnCommand::execute() is
+   * called.
+   *
+   * @return bool
+   */
+  public function isEmpty() {
+    // return empty($this->cmdOpts[self::TARGET]) && empty($this->cmdOpts[self::TARGETS]);
+    return empty($this->cmdOpts);
+  }
+
+  /**
+   *
+   * @param string $arg
+   * @return SvnCommand $this
+   */
   public function depth($arg) {
     if (!isset($this->cmdOpts[self::DEPTH])) {
       $this->cmdOpts[self::DEPTH] = new SvnOptDepth($this, $arg);
@@ -173,48 +249,97 @@ abstract class SvnCommand implements CLICommand {
     return $this->cmdOpts[self::TARGETS];
   }
 
+  /**
+   *
+   * @param string $name
+   * @return SvnCommand
+   */
   public function username($name) {
     $this->cmdOpts[self::USERNAME] = new SvnOptUsername($this, $name);
     return $this;
   }
 
+  /**
+   *
+   * @param string $pass
+   * @return SvnCommand
+   */
   public function password($pass) {
     $this->cmdOpts[self::PASSWORD] = new SvnOptPassword($this, $pass);
     return $this;
   }
 
+  /**
+   *
+   * @param string $dir
+   * @return SvnCommand $this
+   */
   public function configDir($dir) {
     $this->cmdOpts[self::CONFIG_DIR] = new SvnOptConfigDir($this, $dir);
     return $this;
   }
 
+  /**
+   *
+   * @return SvnCommand $this
+   */
   public function recursive() {
     return $this->depth('infinity');
   }
 
+  /**
+   *
+   * @return SvnCommand $this
+   */
   public function nonRecursive() {
     return $this->depth('none');
   }
 
+  /**
+   *
+   * @param bool $arg
+   *  Boolean indicating whether the command switch should be turned on (TRUE)
+   *  or off  FALSE).
+   * @param int $switch
+   *  The command switch to be fiddled with.
+   * @return void
+   */
   protected function fiddleSwitch($arg, $switch) {
     if ($arg) {
       $this->cmdSwitches |= $switch;
     }
     else {
-      $this->cmdSwitches ^= ($this->cmdSwitches & $switch) ? $switch : 0;
+      $this->cmdSwitches &= ~$switch;
     }
   }
 
+  /**
+   *
+   * @param int $bits
+   *  A valid bitmask comprised from the command switch constants attached to
+   *  this class.
+   * @return SvnCommand
+   */
   public function toggleSwitches($bits) {
     $this->cmdSwitches ^= $bits;
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function verbose($arg = TRUE) {
     $this->fiddleSwitch($arg, self::VERBOSE);
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function quiet($arg = TRUE) {
     $this->fiddleSwitch($arg, self::QUIET);
     return $this;
@@ -238,26 +363,51 @@ abstract class SvnCommand implements CLICommand {
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function force($arg = TRUE) {
     $this->fiddleSwitch($arg, self::FORCE);
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function forceLog($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function noIgnore($arg = TRUE) {
     $this->fiddleSwitch($arg, self::NO_IGNORE);
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function autoProps($arg = TRUE) {
     $this->fiddleSwitch($arg, self::AUTO_PROPS);
     return $this;
   }
 
+  /**
+   *
+   * @param bool $arg
+   * @return SvnCommand
+   */
   public function parents($arg = TRUE) {
     $this->fiddleSwitch($arg, self::PARENTS);
     return $this;
@@ -294,6 +444,31 @@ abstract class SvnCommand implements CLICommand {
 
     array_unshift($this->cmds, 'svn', $this->command);
     return $fluent ? $this : $this->cmds;
+  }
+
+  /**
+   * Execute the command according to dimensions of the object's internal state.
+   *
+   * Prepares (if necessary) all the various dimensions of the cli invocation's
+   * state, then fires up a process and gets into output and/or error handling.
+   *
+   * @param bool $fluent
+   *  Indicates whether or not this method should behave fluently (should return
+   *  $this instead of the possibly parsed return value). Defaults to FALSE.
+   * @return mixed
+   */
+  public function execute($fluent = FALSE) {
+    if (!($this->internalSwitches & self::PREPARED)) {
+      $this->prepare(FALSE);
+    }
+
+    $this->procOpen();
+    $this->procHandle();
+    $this->procClose();
+
+    if ($fluent) {
+      return $this;
+    }
   }
 
   /**
@@ -337,7 +512,7 @@ abstract class SvnCommand implements CLICommand {
    *    more than three or four targets.
    *    @see SvnOptTargets
    *
-   * @return SvnRead
+   * @return SvnCommand $this
    */
   public function target($target, $peg_rev = NULL, $aggregate = FALSE) {
     if ($aggregate) {
@@ -354,71 +529,76 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function __destruct() {
-    $this->procClose();
+    $this->procClose(TRUE);
   }
 }
 
 
 abstract class SvnWrite extends SvnCommand {
-  protected $procDescriptor = array(
-      2 => array('pipe', 'w'),
-    );
+
+  public static $operatesOnRepositories = FALSE;
     
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
   }
 
-  /**
-   * Execute the command according to dimensions of the object's internal state.
-   *
-   * Prepares (if necessary) all the various dimensions of the cli invocation's
-   * state, then fires up a process and gets into output and/or error handling.
-   *
-   * @see CLICommand::execute()
-   *
-   * @param bool $fluent
-   *  Indicates whether or not this method should behave fluently (should return
-   *  $this instead of the possibly parsed return value). Defaults to FALSE.
-   * @return mixed
-   */
-  public function execute($fluent = FALSE) {
-    if (!($this->internalSwitches & self::PREPARED)) {
-      $this->prepare(FALSE);
-    }
+  protected function getProcDescriptor() {
+    return array(
+      2 => array('pipe', 'w'),
+    );
+  }
 
-    $this->procOpen();
-
+  protected function procHandle() {
     if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
       throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
       return;
     }
-
-    $this->procClose();
-
-    if ($fluent) {
-      return $this;
-    }
   }
 }
 
+/**
+ * Abstract intermediate parent class for subversion commands that are strictly
+ * read-only.
+ *
+ * The primary difference between read and write operations is the need SvnRead
+ * commands have for output handling/parsing. Most of the additions here are a
+ * reflection of those needs.
+ */
 abstract class SvnRead extends SvnCommand {
 
   // internal switches
   const PARSE_OUTPUT  = 0x004;
 
-  protected $procDescriptor = array(
-      1 => array('pipe', 'w'),
-      2 => array('pipe', 'w'),
-    );
+  // clear flags
+  const PRESERVE_PARSER = 0x008;
 
   /**
-   * Used to spawn the the parsing class object, if/as needed.
    *
-   * @var ReflectionClass
+   * @var CLIParser
    */
   protected $parser;
-  
+  /**
+   *
+   * @var CLIParser
+   */
+  protected $activeParser;
+
+  protected $ret;
+
+  public static $operatesOnRepositories = TRUE;
+
+//  public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
+//    parent::__construct($svnRoot, $defaults);
+//  }
+
+  protected function getProcDescriptor() {
+    return array(
+      1 => $this->activeParser->openOutputHandle(),
+      2 => array('pipe', 'w'),
+    );
+  }
+
   /**
    * Adds an operative revision to the currently queuing command. Note that
    * operative revisions are somewhat less intuitive than peg revisions. If you
@@ -442,7 +622,7 @@ abstract class SvnRead extends SvnCommand {
     parent::setDefaults();
     $this->internalSwitches |= self::PARSE_OUTPUT;
     if (isset($this->parserClass)) {
-      $this->setParserClass($this->parserClass);
+      $this->setParser();
     }
   }
 
@@ -450,60 +630,92 @@ abstract class SvnRead extends SvnCommand {
    * If set to provide output parsing, set the workhorse class that will do the
    * parsing.
    *
-   * @param string $class
-   * @return SvnCommand
+   * @param mixed $class
+   * @return SvnRead
    */
-  public function setParserClass($class) {
-    if (!class_exists($class)) {
-      // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
-      // will always output 'SvnRead'. Keeping it in anyway, in anticipation.
-      throw new Exception("Undeclared class '$class' provided to " . __CLASS__ . "::setParserClass.", E_RECOVERABLE_ERROR);
+  public function setParser($parser = NULL) {
+    if (!$parser instanceof CLIParser) {
+      if (is_null($parser)) {
+        // No parser provided at all; set it to the parserClass.
+        $parser = $this->parserClass;
+      }
+      elseif (!is_string($parser) || !class_exists($parser)) {
+        // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
+        // will always output 'SvnRead'. Keeping it in anyway, in anticipation.
+        throw new Exception("Unsupported operand type passed to " . __CLASS__ . "::setParser.", E_RECOVERABLE_ERROR);
+      }
+      elseif (!class_exists($parser)) {
+        throw new Exception("Undeclared class '$parser' provided to " . __CLASS__ . "::setParser.", E_RECOVERABLE_ERROR);
+      }
+      $this->parser = new $parser();
     }
-    $this->parser = new ReflectionClass($class);
+    else {
+      $this->parser = $parser;
+    }
     return $this;
   }
 
-  /**
-   * Execute the command according to dimensions of the object's internal state.
-   *
-   * Prepares (if necessary) all the various dimensions of the cli invocation's
-   * state, then fires up a process and gets into output and/or error handling.
-   *
-   * @param bool $fluent
-   *  Indicates whether or not this method should behave fluently (should return
-   *  $this instead of the possibly parsed return value). Defaults to FALSE.
-   * @return mixed
-   */
   public function execute($fluent = FALSE) {
-    if (!($this->internalSwitches & self::PREPARED)) {
-      $this->prepare(FALSE);
+    // If we're set to parse output, use the currently set parser; otherwise, 
+    if ($this->internalSwitches & self::PARSE_OUTPUT) {
+      $this->activeParser =& $this->parser;
     }
-
-    $this->procOpen();
-
-    $ret = stream_get_contents($this->procPipes[1]);
-
-    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
-      return;
+    elseif (!$this->activeParser instanceof DummyParser) {
+      $this->activeParser = new DummyParser();
     }
+    parent::execute(FALSE);
+    return $fluent ? $this : $this->ret;
+  }
 
-    $this->svnRoot->retContainer[$this] =
-      ($this->internalSwitches & self::PARSE_OUTPUT) ? $this->parser->newInstance($ret) : $ret;
-
-
+  protected function procOpen() {
     $this->procClose();
+    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
+  }
 
-    if ($fluent) {
-      return $this;
+  protected function procHandle() {
+    $status = proc_get_status($this->process);
+    // FIXME delegating responsibility to the parser object to decide how stdout
+    // is grabbed means that the parser could request it via a pipe. That would
+    // be completely wrong, but it's not prevented by the interface, and would
+    // cause PHP to hang here as the stderr pipe won't be filled until after the
+    // stdout pipe is fetched. So, checking the error pipe first in this way is
+    // risky for broken code, but it's better to do it this way b/c we ensure
+    // there's no error before continuing on to parse the output.
+    // $this->stdErr = stream_get_contents($this->procPipes[2]);
+    if ($status['exitcode']) {
+      throw new Exception('svn failed with the following message: ' . stream_get_contents($this->procPipes[2]), E_RECOVERABLE_ERROR);
     }
-    return $this->svnRoot->retContainer[$this];
+    $this->ret = $this->activeParser->parseOutput();
+  }
+
+  protected function procClose($destruct = FALSE) {
+    $this->activeParser->procClose($destruct);
+    parent::procClose();
+  }
+
+  /**
+   * Flush the object of its internal data and state, readying it for a new
+   * command to be run.
+   *
+   * @see SvnCommand::clear()
+   *
+   * @param int $preserve_flags
+   *  SvnRead adds one additional flag to those already provided by SvnCommand:
+   *    #- SvnRead::PRESERVE_PARSER - passing this flag will cause the existing
+   *       parser (contained in SvnRead::$parser) to be preserved.
+   * @return SvnRead $this
+   */
+  public function clear($preserve_flags = 0) {
+    if (!$preserve_flags & self::PRESERVE_PARSER) {
+      unset($this->parser);
+    }
+    parent::clear($preserve_flags);
+    return $this;
   }
 }
 
 /**
  * Class that handles invocation of `svn info`.
- * @author sdboyer
  *
  */
 class SvnInfo extends SvnRead {
@@ -554,6 +766,7 @@ class SvnMerge extends SvnWrite {
   const REINTEGRATE = 0x20000;
   const RECORD_ONLY = 0x40000;
 
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'merge';
 
   public function setSwitches() {
@@ -565,7 +778,7 @@ class SvnMerge extends SvnWrite {
 
 class SvnPropGet extends SvnRead {
   const STRICT = 0x20000;
-
+  // public static $operatesOnRepositories = TRUE;
   protected $command = 'propget';
 
   public function setSwitches() {
@@ -587,6 +800,8 @@ class SvnCommit extends SvnWrite {
 
 class SvnDelete extends SvnWrite {
   const KEEP_LOCAL = 0x20000;
+
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'delete';
 
   public function setSwitches() {
@@ -612,6 +827,7 @@ class SvnChangelist extends SvnWrite {
 }
 
 class SvnCheckout extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'checkout';
 }
 
@@ -620,6 +836,7 @@ class SvnCleanup extends SvnWrite {
 }
 
 class SvnCopy extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'copy';
 }
 
@@ -628,10 +845,12 @@ class SvnDiff extends SvnRead {
 }
 
 class SvnExport extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'export';
 }
 
 class SvnImport extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'import';
 }
 
@@ -644,18 +863,22 @@ class SvnMergeinfo extends SvnRead {
 }
 
 class SvnMkdir extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'mkdir';
 }
 
 class SvnMove extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'move';
 }
 
 class SvnPropdel extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'propdel';
 }
 
 class SvnPropedit extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'propedit';
 }
 
@@ -664,6 +887,7 @@ class SvnProplist extends SvnRead {
 }
 
 class SvnPropset extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'propset';
 }
 
@@ -684,6 +908,7 @@ class SvnSwitch extends SvnWrite {
 }
 
 class SvnUnlock extends SvnWrite {
+  public static $operatesOnRepositories = TRUE;
   protected $command = 'unlock';
 }
 
