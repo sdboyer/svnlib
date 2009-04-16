@@ -672,20 +672,74 @@ abstract class SvnRead extends SvnCommand {
     $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
   }
 
+  /**
+   * The meat of execution - process input/output/error is all handled by this
+   * method.
+   *
+   * A crucial part of SvnInstace::procHandle() is the handling it provides for
+   * error output. For SvnRead and children, there is a knotty problem to be
+   * solved there, due to the fact that PHP will hang if:
+   *  - In SvnRead::getProcDescriptor() defines a process descriptor with pipes
+   *    on BOTH stdin and stdout (pipes 1 and 2, respectively).
+   *  - stream_get_contents() is called on the stderr output pipe (here,
+   *    $this->procPipes[2]) before output is collected from the stdout pipe.
+   *
+   * This behavior occurs because the system call expects something to connect
+   * to the read end of the stdout pipe ($this->procPipes[1]) before the process
+   * will actually be run. Consequently, when PHP tries to connect to the stderr
+   * pipe first, we get caught indefinitely waiting - on the one end, the system
+   * is waiting for something on the read end of stdout, and on the other, PHP
+   * is waiting for stderr to be filled.
+   *
+   * The svnlib provides two types of output parsers by default: specialized XML
+   * output parsers for several of the common read commands, and the general
+   * DummyParser which is used as a vanilla stand-in class that satisfies the
+   * CLIParser interface SvnRead::PARSE_OUTPUT flag is not set (thereby
+   * preventing klugey code for passing raw output in the svnlib itself). All of
+   * these eschew pipes for file pointer resources, typically streams of
+   * php://temp), so this is not a problem under native circumstances. However,
+   * client code could easily pass in a parser that does use a pipe for stdout
+   * (TODO: although the svnlib, as currently written, does not support this),
+   * which means our code has to deal with this problem.
+   *
+   * proc_get_status(), which provides an associative array with metadata about
+   * the current state of the process (including exit code), is not an option.
+   * Because proc_open() spawns processes separately and PHP code execution
+   * continues immediately, it is quite easy for a call to proc_get_status()
+   * here to happen before the process itself completes. (PHP only waits for the
+   * process to complete if we try to access stdout). We could wait, then
+   * re-call proc_get_status(), but because it only reports exit code accurately
+   * on the first call, there's no point.
+   *
+   * The only option that is guaranteed to work in all cases is the somewhat
+   * klugey check you see below: if $this->activeParser implements the
+   * CLIPipeStdOut interface, indicating that it is using a pipe for stdout,
+   * then we grab output first; otherwise, we grab stderr first and never bother
+   * getting the output at all if the process exited with a non-zero exit code.
+   */
   protected function procHandle() {
-    $status = proc_get_status($this->process);
-    // FIXME delegating responsibility to the parser object to decide how stdout
-    // is grabbed means that the parser could request it via a pipe. That would
-    // be completely wrong, but it's not prevented by the interface, and would
-    // cause PHP to hang here as the stderr pipe won't be filled until after the
-    // stdout pipe is fetched. So, checking the error pipe first in this way is
-    // risky for broken code, but it's better to do it this way b/c we ensure
-    // there's no error before continuing on to parse the output.
-    // $this->stdErr = stream_get_contents($this->procPipes[2]);
-    if ($status['exitcode']) {
-      throw new Exception('svn failed with the following message: ' . stream_get_contents($this->procPipes[2]), E_RECOVERABLE_ERROR);
+    if ($this->activeParser instanceof CLIPipeStdOut) {
+      $this->ret = $this->activeParser->parseOutput();
+      $this->procHandleStdErr();
     }
-    $this->ret = $this->activeParser->parseOutput();
+    else {
+      $this->procHandleStdErr();
+      $this->ret = $this->activeParser->parseOutput();
+    }
+  }
+
+  /**
+   * Helper function for SvnRead::procHandle() that makes it a smidge less
+   * kluge by eliminating the need for duplicating the actual code for checking
+   * stderr.
+   */
+  protected function procHandleStdErr() {
+    if ($stderr = stream_get_contents($this->procPipes[2])) {
+      $status = proc_get_status($this->process);
+      if ($status['exitcode']) {
+        throw new Exception('svn failed with the following message: ' . stream_get_contents($this->procPipes[2]), E_RECOVERABLE_ERROR);
+      }
+    }
   }
 
   protected function procClose($destruct = FALSE) {
