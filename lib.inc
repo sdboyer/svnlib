@@ -76,6 +76,7 @@ class DummyParser implements CLIParser {
   }
 
   public function parseOutput() {
+    rewind($this->output);
     return stream_get_contents($this->output);
   }
 
