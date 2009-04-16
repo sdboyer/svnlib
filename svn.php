@@ -71,11 +71,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     $this->subPath = trim($path, '/');
   }
 
-  public function verify() {
-    if (!$this->isDir()) {
-      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPathname() . '" was provided.', E_RECOVERABLE_ERROR);
-    }
-  }  
+  abstract public function verify();
 
   public function getRootPath() {
     if (empty($this->subPath)) {
@@ -133,7 +129,10 @@ class SvnWorkingCopy extends SvnInstance {
   }
 
   public function verify() {
-    parent::verify();
+    if (!$this->isDir()) {
+      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPathname() . '" was provided.', E_RECOVERABLE_ERROR);
+    }
+
     if (!is_dir($this . DIRECTORY_SEPARATOR . '.svn')) {
       throw new Exception($this . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
