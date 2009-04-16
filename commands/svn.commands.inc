@@ -72,7 +72,7 @@ abstract class SvnCommand implements CLICommand {
   protected $process = 0;
 
   public $internalSwitches = 0;
-  protected $cmdSwitches = 0;
+  public $cmdSwitches = 0;
   protected $cmdOpts = array();
 
   public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
