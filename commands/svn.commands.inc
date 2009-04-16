@@ -691,10 +691,11 @@ abstract class SvnRead extends SvnCommand {
    * is waiting for something on the read end of stdout, and on the other, PHP
    * is waiting for stderr to be filled.
    *
-   * The svnlib provides two types of output parsers by default: specialized XML
-   * output parsers for several of the common read commands, and the general
-   * DummyParser which is used as a vanilla stand-in class that satisfies the
-   * CLIParser interface SvnRead::PARSE_OUTPUT flag is not set (thereby
+   * The svnlib provides two types of output parsers by default. There's the
+   * specialized output parsers, typically XML-oriented, most of which share
+   * SvnOutputHandler as an abstract parent class. Then there's the general
+   * DummyParser that acts as a transparent stand-in class, satisfying the
+   * CLIParser interface when SvnRead::PARSE_OUTPUT is not set (and thereby
    * preventing klugey code for passing raw output in the svnlib itself). All of
    * these eschew pipes for file pointer resources, typically streams of
    * php://temp), so this is not a problem under native circumstances. However,
