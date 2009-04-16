@@ -203,14 +203,20 @@ class SvnRepository extends SvnInstance {
 
   public function verify() {
     // Need to explode out the URL into its respective parts, first
-    list($this->protocol, $this->path) = preg_split('@://@', (string) $this, 2);
+    if (preg_match('@^[A-Za-z+]+://@', (string) $this)) {
+      list($this->protocol, $this->path) = preg_split('@://@', (string) $this, 2);
+    }
+    else { // assume it's a plain path, which means a local file - so, file://
+      $this->protocol = 'file';
+      $this->path = (string) $this;
+    }
 
     // Run a fast, low-overhead operation, verifying this is a working svn repository.
     if (self::$protocols[$this->protocol] & self::CAN_SVNADMIN) {
       system('svnadmin lstxns ' . escapeshellarg($this->path), $exit);
     }
     else {
-      system('svn info --config-dir ' . $this->configDir . ' ' . (string) $this);
+      system('svn info --config-dir ' . $this->configDir . ' ' . (string) $this, $exit);
     }
     if ($exit) {
       throw new Exception($this->getPathname() . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
