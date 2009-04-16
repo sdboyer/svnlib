@@ -26,6 +26,12 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
 
   public function __construct($path, $verify = TRUE) {
     parent::__construct($path);
+
+   // Because it's very easy for the svnlib to fail (hard and with weird errors)
+   // if a config dir isn't present, we set it to the unintrusive default that
+   // ships with svnlib.
+   $this->configDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir';
+
     if ($verify) {
       $this->verify();
     }
@@ -38,7 +44,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     $orig_subpath = $this->subPath;
     $this->subPath = NULL;
 
-    $output = $this->svn('info', FALSE)->target('.')->configDir(dirname(__FILE__) . '/configdir')->execute();
+    $output = $this->svn('info', FALSE)->target('.')->configDir($this->configDir)->execute();
 
     preg_match('/^Repository Root: (.*)\n/m', $output, $root);
     $this->repoRoot = $root[1];
@@ -78,6 +84,11 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     else {
       return (string) $this . DIRECTORY_SEPARATOR . $this->subPath;
     }
+  }
+
+
+  public function defaultConfigDir() {
+
   }
 
   abstract public function getPrependPath();
@@ -123,7 +134,7 @@ class SvnWorkingCopy extends SvnInstance {
 
   public function verify() {
     parent::verify();
-    if (!is_dir($this . '/.svn')) {
+    if (!is_dir($this . DIRECTORY_SEPARATOR . '.svn')) {
       throw new Exception($this . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
   }
@@ -164,33 +175,49 @@ class SvnWorkingCopy extends SvnInstance {
  * foolish to reimplement in userland what's already been done in C.
  */
 class SvnRepository extends SvnInstance {
+  // Repo protocol capability flags
+  const WRITE_CAPABLE = 0x001;
+  const CAN_SVNADMIN  = 0x002;
+
+//  public static $protocols = array(
+//    'http' => array(
+//      'write capable' => FALSE,
+//    ),
+//    'https' => array(
+//      'write capable' => FALSE,
+//    ),
+//    'svn' => array(
+//      'write capable' => FALSE,
+//    ),
+//    'svn+ssh' => array(
+//      'write capable' => TRUE,
+//    ),
+//    'file' => array(
+//      'write capable' => TRUE,
+//    ),
+//  );
+
   public static $protocols = array(
-    'http' => array(
-      'write capable' => FALSE,
-    ),
-    'https' => array(
-      'write capable' => FALSE,
-    ),
-    'svn' => array(
-      'write capable' => FALSE,
-    ),
-    'svn+ssh' => array(
-      'write capable' => TRUE,
-    ),
-    'file' => array(
-      'write capable' => TRUE,
-    ),
+    'http' => 0,
+    'https' => 0,
+    'svn' => 0,
+    'svn+ssh' => 1,
+    'file' => 3,
   );
 
-  protected $protocol;
-
-//  public function __construct($url, $verify = TRUE) {
-//    parent::__construct($url, $verify);
-//  }
+  protected $protocol, $path;
 
   public function verify() {
+    // Need to explode out the URL into its respective parts, first
+    list($this->protocol, $this->path) = preg_split('@://@', (string) $this, 2);
+
     // Run a fast, low-overhead operation, verifying this is a working svn repository.
-    system('svnadmin lstxns ' . escapeshellarg($this->getPathname()), $exit);
+    if (self::$protocols[$this->protocol] & self::CAN_SVNADMIN) {
+      system('svnadmin lstxns ' . escapeshellarg($this->path), $exit);
+    }
+    else {
+      system('svn info --config-dir ' . $this->configDir . ' ' . (string) $this);
+    }
     if ($exit) {
       throw new Exception($this->getPathname() . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
@@ -238,7 +265,7 @@ class SvnRepository extends SvnInstance {
    * @return bool
    */
   public function isWritable() {
-    return self::$protocols[$this->protocol]['write capable'];
+    return self::$protocols[$this->protocol] & self::WRITE_CAPABLE;
   }
 
   public function svnadmin($subcommand, $defaults = NULL) {
