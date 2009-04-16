@@ -82,11 +82,6 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     }
   }
 
-
-  public function defaultConfigDir() {
-
-  }
-
   abstract public function getPrependPath();
   /**
    *
