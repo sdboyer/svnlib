@@ -209,8 +209,8 @@ class SvnOptTarget extends SvnOpt {
 
   public function getShellString() {
     $string = $this->sc->getPrependPath();
-    $string .= escapeshellarg(($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev);
-    return $string;
+    $string .= ($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev;
+    return escapeshellarg($string);
   }
 }
 
