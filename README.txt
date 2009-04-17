@@ -1,4 +1,5 @@
-=== Svnlib ===
+svnlib
+======
 
 The PHP Subversion library (svnlib) is an all-userspace PHP library that
 facilitates easy interaction with the svn binary directly from php code. The
@@ -15,7 +16,8 @@ interface to that functionality.
 
 
 
-== INSTALLATION ==
+Installation
+------------
 
 Simply unzip/untar/git clone the svnlib somewhere onto your system, and include
 in the svn.php file in the root of the directory. Once you include that main
@@ -26,7 +28,8 @@ depending on your use case.
 
 
 
-== BASICS: HOW TO USE IT ==
+Basics: How to use it
+---------------------
 
 Begin by creating a new svn 'instance' - providing the path to either an svn
 working copy, or an svn repository:
@@ -180,8 +183,8 @@ halfway attempt at abstracting as much of svnlib's approach as possible. The
 interfaces will likely mature considerably with time.
 
 
-
-== MORE COMPLEX BEHAVIOR (GOODIES!) ==
+More Complex Behavior (Goodies!)
+--------------------------------
 
 The svnlib has a number of ways that its behavior can be streamlined and optimized.
 
@@ -341,7 +344,8 @@ Some options can be set at the level of the SvnInstance, and will automatically
 be attached to any commands spawned from that instance.
 
 
-== CAVEATS ==
+Caveats
+-------
 
 - Serious effort has been invested in balancing speed with flexibility for this
   library. All-userspace php can only be so fast, but the real speed bottleneck
