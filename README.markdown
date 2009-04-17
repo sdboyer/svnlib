@@ -50,14 +50,14 @@ Note that these two classes do share an abstract parent class, SvnInstance:
       SvnWorkingCopy            SvnRepository
 
 Establishing the instance is rather like giving metadata for a database
-connection: once the database connection data is in your SvnInstance object,
-you can run as many svn commands - like database queries - against that instance
-as you'd like. The programmatic flow for running commands occurs in three
-stages: 
+connection: once the 'database connection'-like data is in your SvnInstance
+object, you can run as many svn commands - like database queries - against that
+instance as you'd like. The programmatic flow for running commands occurs in
+three stages:
 
-1.  Command spawning
-2.  Command preparation
-3.  Command execution
+ 1. Command spawning
+ 2. Command preparation
+ 3. Command execution
 
 Commands are spawned by calling the SvnInstance::svn() method and passing in the
 name of the subcommand to be invoked:
@@ -91,8 +91,7 @@ Once you're done passing in parameters, running the command is simple:
 The svnlib will generate a properly escaped system call in accordance with what
 you prepared. In this example, that would be:
 
-    svn info --xml --incremental --revision 42 --depth infinity \
-    trunk/index.php trunk/example.php@424
+    svn info --xml --incremental --revision 42 --depth infinity trunk/index.php trunk/example.php@424
 
 proc_open is then called to fire up the command, and the results are then fed
 back into $output.
@@ -104,18 +103,18 @@ The svnlib does have a bit of jargon. Probably most important is the distinction
 between "switch," "opt," "argument," and "parameter." Working from the generated
 system call in our example:
 
-1.  Switches: these are command line options that are only a dash and a
+ 1. Switches: these are command line options that are only a dash and a
     character (or a GNU standard long form); simply passing the letter is
     sufficient to enable the functionality. Switches in the example are
     '--xml' and '--incremental'.
-2.  Opts: these are like switches, except the binary (perhaps optionally)
+ 2. Opts: these are like switches, except the binary (perhaps optionally)
     expects some additional information after the switch. Opts in the example:
     '--revision 42', '--depth infinity'.
-3.  Arguments: the input that the binary is expecting to receive; no need to
+ 3. Arguments: the input that the binary is expecting to receive; no need to
     prime it with a switch. The distinction between opts and arguments can
     sometimes be a bit academic; certainly, svnlib's underlying handling for
     them is the same.
-4.  Parameters: generic term encompassing all three of the above groups. In
+ 4. Parameters: generic term encompassing all three of the above groups. In
     other words, parameters are "all the crap you pass to the command."
 
 
@@ -127,10 +126,10 @@ that I missed.
 
 There are four essential families of classes that the svnlib employs:
 
-1.  The SvnInstance family; these extend SplFileInfo.
-2.  The SvnCommand family; these implement the CLICommand interface.
-3.  The SvnOpt family; these implement the CLICommandOpt interface.
-4.  The SvnOutputHandler family; these implement the CLIParser interface.
+ 1. The SvnInstance family; these extend SplFileInfo.
+ 2. The SvnCommand family; these implement the CLICommand interface.
+ 3. The SvnOpt family; these implement the CLICommandOpt interface.
+ 4. The SvnOutputHandler family; these implement the CLIParser interface.
 
 SvnInstance was already dealt with above, so we'll skip over it here.
 
@@ -190,7 +189,8 @@ interfaces will likely mature considerably with time.
 
 ## More Complex Behavior (Goodies!) ##
 
-The svnlib has a number of ways that its behavior can be streamlined and optimized.
+The svnlib has a number of ways that its behavior can be streamlined and
+optimized.
 
 ### Command Chaining ###
 
@@ -227,19 +227,19 @@ If an only-allowed-once opt is passed in a second time, it will overwrite the
 previous instance of the opt and obliterate any of the config stored therein.
 From a fresh $info = $wc->svn('info); object, then:
 
-  $info->revision(21)->target('index.php')->target('.htaccess', 822)->execute();
+    $info->revision(21)->target('index.php')->target('.htaccess', 822)->execute();
 
 will generate the system call:
 
-  svn --revision 21 index.php .htaccess@822
+    $ svn --revision 21 index.php .htaccess@822
 
 whereas the commands:
 
-  $info->revision(21)->target('index.php')->target('.htaccess', 822)->revision(111)->execute();
+    $info->revision(21)->target('index.php')->target('.htaccess', 822)->revision(111)->execute();
 
 will generate the system call:
 
-  svn --revision 111 index.php .htaccess@822
+    $ svn --revision 111 index.php .htaccess@822
 
 The first revision opt will be overwritten by the later revision opt and never
 make it into the call.
@@ -255,14 +255,13 @@ SvnCommand::target(). Aggregation is enabled by passing TRUE as the third
 parameter. Our example again:
 
     $output = $info->xml()->incremental()->revision(42)->depth('infinity')
-    ->target('trunk/index.php', NULL, TRUE)
-    ->target('trunk/example.inc', 424, TRUE)->execute();
+      ->target('trunk/index.php', NULL, TRUE)
+      ->target('trunk/example.inc', 424, TRUE)->execute();
 
 While the output will be identical to the original example, the system call will
 be slightly different:
 
-    $ svn info --xml --incremental --revision 42 --depth infinity \
-    --targets /tmp/<random filename>
+    $ svn info --xml --incremental --revision 42 --depth infinity --targets /tmp/<random filename>
 
 This approach is primarily useful in situations where you would otherwise be
 queueing a lot - hundreds, thousands, more - of individual target items. Using
@@ -304,10 +303,11 @@ Fortunately, they're easily overridden, and you can quickly get into very
 powerful territory with a custom parser.
 
 Here are some bullet points to keep in mind when implementing your own parser:
-*   The key interface here is CLIParser; your parser will crash and burn if it's
+
+ *  The key interface here is CLIParser; your parser will crash and burn if it's
     not implemented. See lib.inc for the interface definition, and parsers.inc
     for some examples.
-*   The command you'll want is SvnRead::setParser() (note that SvnWrite & family
+ *  The command you'll want is SvnRead::setParser() (note that SvnWrite & family
     do not have any output parsing, because they don't generally have output!).
     You can then pass in the name of the class (as a string), or an already
     instantiated object of your class. Either will work, but doing the latter
@@ -324,13 +324,14 @@ pass in - you can retain command opts and switches, internal switches, and/or
 your parser. Returning to the original example, it means after you've called
 $info->execute(), you could do the following:
 
-    $info->clear(SvnRead::PRESERVE_CMD_OPTS | SvnRead::PRESERVE_CMD_SWITCHES | SvnRead::PRESERVE_INT_SWITCHES | SvnRead::PRESERVE_PARSER)->nonRecursive()->target('trunk/foo')->execute();
+    $info->clear(SvnRead::PRESERVE_CMD_OPTS | SvnRead::PRESERVE_CMD_SWITCHES |
+      SvnRead::PRESERVE_INT_SWITCHES | SvnRead::PRESERVE_PARSER)
+      ->nonRecursive()->target('trunk/foo')->execute();
 
 After firing the system call specified in the original example, the command
 flushes itself out then preps to issue the command with the additions you made:
 
-    svn info --xml --incremental --revision 42 --depth immediate \
-    trunk/index.php trunk/example.php@424 trunk/foo
+    svn info --xml --incremental --revision 42 --depth immediate trunk/index.php trunk/example.php@424 trunk/foo
 
 As discussed above, the old --depth opt gets overwritten with your new value
 from nonRecursive, and the new target gets added to the end.
@@ -347,12 +348,12 @@ be attached to any commands spawned from that instance.
 
 ## Caveats ##
 
-- Serious effort has been invested in balancing speed with flexibility for this
-  library. All-userspace php can only be so fast, but the real speed bottleneck
-  is system calls. If you are concerned about speed, _the most important_ place
-  to optimize code that utilizes this library is in minimizing the number of
-  times you call SvnCommand::execute(). Cache, queue commands, do whatever it
-  takes to minimize those calls.
+ *  Serious effort has been invested in balancing speed with flexibility for this
+    library. All-userspace php can only be so fast, but the real speed bottleneck
+    is system calls. If you are concerned about speed, _the most important_ place
+    to optimize code that utilizes this library is in minimizing the number of
+    times you call SvnCommand::execute(). Cache, queue commands, do whatever it
+    takes to minimize those calls.
 
 ## License ##
 
