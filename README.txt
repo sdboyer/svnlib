@@ -1,10 +1,28 @@
-=== Svnlib README ===
+=== Svnlib ===
 
-The PHP svn library (svnlib) is an all-userspace PHP library that facilitates
-easy interaction with the svn binary directly from php code. The philosophy
-behind the library is to replicate command line-style behavior as much as
-possible; in other words, everything you know about using svn from a
+The PHP Subversion library (svnlib) is an all-userspace PHP library that
+facilitates easy interaction with the svn binary directly from php code. The
+philosophy behind the library is to replicate command line-style behavior as
+much as possible; in other words, everything you know about using svn from a
 shell/command line will apply to svnlib.
+
+To this end, there are also things that the svnlib does, but intentionally does
+not explain. The Subversion documentation is quite good - see the online manual
+at http://svnbook.red-bean.com/, or simply the information included in --help.
+As such, our documentation assumes you already know (or can find out) about what
+the commands actually _do_, and instead focuses on explaining svnlib as an
+interface to that functionality.
+
+
+
+== INSTALLATION ==
+
+Simply unzip/untar/git clone the svnlib somewhere onto your system, and include
+in the svn.php file in the root of the directory. Once you include that main
+file, svnlib takes care of the rest. 
+
+It may be useful to put the library somewhere on your PHP include path, but YMMV
+depending on your use case.
 
 
 
@@ -21,15 +39,25 @@ protocol:
 
 	$repo = new SvnRepository('file:///path/to/local/repository');
 
+Note that these two classes do share an abstract parent class, SvnInstance:
+
+             SvnInstance (Abstract)
+                        |
+                   (Children)
+                        |
+           |-------------------------|
+           |                         |
+      SvnWorkingCopy            SvnRepository
+
 Establishing the instance is rather like giving metadata for a database
 connection: once the database connection data is in your SvnInstance object,
 you can run as many svn commands - like database queries - against that instance
 as you'd like. The programmatic flow for running commands occurs in three
 stages: 
 
-  1) Command spawning
-  2) Command preparation
-  3) Command execution
+  (1) Command spawning
+  (2) Command preparation
+  (3) Command execution
 
 Commands are spawned by calling the SvnInstance::svn() method and passing in the
 name of the subcommand to be invoked:
@@ -43,19 +71,113 @@ parameters for svn subcommands you already know and love:
 
 	$info->xml(); // turns on the '--xml' switch
 	$info->incremental(); // turns on the '--incremental' switch
-	$info->revision(423); // will pass in the opt '--revision 423'
+	$info->revision(42); // will pass in the opt '--revision 42'
 	$info->depth('infinity'); // will pass in the opt '--depth infinity'
 	$info->target('trunk/index.php'); // will pass in 'trunk/index.php', will be interpreted relative to wc base path
 	$info->target('trunk/example.inc', 424); // will pass in 'trunk/example.inc@424', interpreted relative to wc base path
+
+(NOTE - the readme refers back to this example repeatedly!)
 
 Once you're done passing in parameters, running the command is simple:
 
 	$output = $info->execute();
 
 The svnlib will generate a properly escaped system call in accordance with what
-you prepared (in the example, `svn info --xml --incremental --revision 423 --depth infinity trunk/index.php trunk/example.php@424`),
-fire the command using proc_open, then feed the results of the command back into
-$output.
+you prepared (in the example, `svn info --xml --incremental --revision 42 \
+--depth infinity trunk/index.php trunk/example.php@424`), fire the command using
+proc_open, then feed the results of the command back into $output.
+
+
+
+== TERMINOLOGY ==
+
+The svnlib does have a bit of jargon. Probably most important is the distinction
+between "switch," "opt," "argument," and "parameter." Working from the generated
+system call in our example:
+
+  (1) Switches: these are command line options that are only a dash and a
+      character (or a GNU standard long form); simply passing the letter is
+      sufficient to enable the functionality. Switches in the example are
+      '--xml' and '--incremental'.
+  (2) Opts: these are like switches, except the binary (perhaps optionally)
+      expects some additional information after the switch. Opts in the example:
+      '--revision 42', '--depth infinity'.
+  (3) Arguments: the input that the binary is expecting to receive; no need to
+      prime it with a switch. The distinction between opts and arguments can
+      sometimes be a bit academic; certainly, svnlib's underlying handling for
+      them is the same.
+  (4) Parameters: generic term encompassing all three of the above groups. In
+      other words, parameters are "all the crap you pass to the command."
+
+
+Note that I'd be happy to be corrected on these if there's a standard out there
+that I missed.
+
+
+
+== INTERNAL ARCHITECTURE OVERVIEW ==
+
+There are four essential families of classes that the svnlib employs:
+
+  1. The SvnInstance family; these extend SplFileInfo.
+  2. The SvnCommand family; these implement the CLICommand interface.
+  3. The SvnOpt family; these implement the CLICommandOpt interface.
+  4. The SvnOutputHandler family; these implement the CLIParser interface.
+
+SvnInstance was already dealt with above, so we'll skip over it here.
+
+SvnCommands are svnlib's real workhorses. These are those objects that are
+created during "Command Spawning," and they are responsible for assembling the
+invocation, firing it, and passing along the output. The class structure looks
+generally like this:
+
+                           SvnCommand (Abstract)
+                                      |
+                                 (Children)
+                                      |
+                     |--------------------------------|
+                     |                                |
+             SvnRead (Abstract)               SvnWrite (Abstract)
+                     |                                |
+                     |                                |
+       |------|------|------|------|    |------|------|------|------|
+       |      |      |      |      |    |      |      |      |      |
+     SvnInfo  |   SvnList   |   (etc.)  |   SvnCopy   |  SvnSwitch  |
+            SvnLog       SvnDiff     SvnCommit    SvnExport       (etc.)
+
+So, when we called $wc->svn('info') earlier, it created and returned an SvnInfo
+object. The concrete classes for each command tend do very, very little; almost
+all of the work is abstacted into the higher-level abstract classes. From client
+code's perspective, the most important distinction between the SvnRead and
+SvnWrite branches are that output handling and parser objects are only available
+with SvnRead.
+
+All of these commands are in commands/svn.commands.inc; check out the source for
+further insight.
+
+The SvnOpt family are opts and arguments that are spawned when certain methods
+are called from an SvnCommand object. These objects store relevant information
+about the opt until execution time, at which point they generate a shell string
+using that saved configuration information. The class structure:
+
+                             SvnOpt (Abstract)
+                                    |
+                               (Children)
+                                    |
+      |---------|---------|---------|---------|--------|---------|---------|
+      |         |         |         |         |        |         |         |
+  SvnOptAccept  | SvnOptChangelist  |    SvnOptDepth   |    SvnOptMessage  |
+          SvnOptRevision      SvnOptConfigDir     SvnOptEncoding        (etc.)
+
+
+Switches are simple enough that they don't need their own objects for handling;
+consequently, they are contained entirely within a single bitmask that is stored
+in SvnCommand::$cmdSwitches. Again, see commands/svn.commands.inc for a full
+list of the switch constants and their associated shell strings.
+
+Note that the various "CLI..." interfaces are all defined in lib.inc, and are a
+halfway attempt at abstracting as much of svnlib's approach as possible. The
+interfaces will likely mature considerably with time.
 
 
 
@@ -71,16 +193,50 @@ because fluency doesn't make sense in the situation). This means you can chain
 commands together. The above $info example could be rewritten in a chain as
 follows:
 
-  $output = $info->xml()->incremental()->revision(423)->depth('infinity')
+  $output = $info->xml()->incremental()->revision(42)->depth('infinity')
     ->target('trunk/index.php')->target('trunk/example.inc', 424)->execute();
 
-This will generate a system call that is identical to the original example. All
-of the command queuing methods are fluent, so they can be chained. Execute, by
-default, is not fluent, but instead returns the generated output.
+This command sequence is functionally identical to the original example.
+
+All of the command queuing methods are fluent, so they can be chained. Execute,
+by default, is not fluent, but instead returns the generated output (at least
+for SvnRead-descended subcommands).
 
 = SMART PARAMETER QUEUING/STORAGE =
 
-Some commands can be present more than once; others only once. Handled.
+Some parameters can be passed multiple times to some subcommands; others can
+only be passed once. The svnlib is aware of this, and handles it mostly
+transparently. The primary parameter capable of doing this is 'target,' which
+are those paths/to/files/or/directories that you pass in for svn to act on. As
+the original example shows, every SvnCommand::target(...) call results in an
+additional target argument being generated for the final system call.
+
+In keeping with svnlib's philosophy, of mirroring the command line behavior of
+the binary, most parameters can only be passed once. Consequently, svnlib
+doesn't document whether or not multiple instances of a parameter are allowed.
+For that, consult the svn help documentation.
+
+If an only-allowed-once opt is passed in a second time, it will overwrite the
+previous instance of the opt and obliterate any of the config stored therein.
+From a fresh $info = $wc->svn('info); object, then:
+
+  $info->revision(21)->target('index.php')->target('.htaccess', 822)->execute();
+
+will generate the system call:
+
+  svn --revision 21 index.php .htaccess@822
+
+whereas the commands:
+
+  $info->revision(21)->target('index.php')->target('.htaccess', 822)
+    ->revision(111)->execute();
+
+will generate the system call:
+
+  svn --revision 111 index.php .htaccess@822
+
+The first revision opt will be overwritten by the later revision opt and never
+make it into the call.
 
 = MASS TARGETING =
 
@@ -99,7 +255,8 @@ parameter. Our example again:
 While the output will be identical to the original example, the system call will
 be slightly different:
 
-  svn info --xml --incremental --revision 423 --depth infinity --targets /tmp/<random filename>
+  svn info --xml --incremental --revision 42 --depth infinity \
+  --targets /tmp/<random filename>
 
 This approach is primarily useful in situations where you would otherwise be
 queueing a lot - hundreds, thousands, more - of individual target items. Using
@@ -168,12 +325,15 @@ $info->execute(), you could do the following:
 After firing the system call specified in the original example, the command
 flushes itself out then preps to issue the command with the additions you made:
 
-  svn info --xml --incremental --revision 423 --depth immediate trunk/index.php trunk/example.php@424 trunk/foo
+  svn info --xml --incremental --revision 42 --depth immediate trunk/index.php \
+  trunk/example.php@424 trunk/foo
 
 As discussed above, the old --depth opt gets overwritten with your new value
 from nonRecursive, and the new target gets added to the end.
 
 See the docblock for SvnCommand::clear() for more details.
+
+= PATH PREFIXING =
 
 = INSTANCE-LEVEL DEFAULTS =
 
