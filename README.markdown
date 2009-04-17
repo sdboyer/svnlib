@@ -1,5 +1,4 @@
-svnlib
-======
+# svnlib #
 
 The PHP Subversion library (svnlib) is an all-userspace PHP library that
 facilitates easy interaction with the svn binary directly from php code. The
@@ -16,8 +15,7 @@ interface to that functionality.
 
 
 
-Installation
-------------
+## Installation ##
 
 Simply unzip/untar/git clone the svnlib somewhere onto your system, and include
 in the svn.php file in the root of the directory. Once you include that main
@@ -28,8 +26,7 @@ depending on your use case.
 
 
 
-Basics: How to use it
----------------------
+## Basics: How to use it ##
 
 Begin by creating a new svn 'instance' - providing the path to either an svn
 working copy, or an svn repository:
@@ -91,8 +88,7 @@ you prepared (in the example, `svn info --xml --incremental --revision 42 \
 proc_open, then feed the results of the command back into $output.
 
 
-
-== TERMINOLOGY ==
+## Terminology ##
 
 The svnlib does have a bit of jargon. Probably most important is the distinction
 between "switch," "opt," "argument," and "parameter." Working from the generated
@@ -117,8 +113,7 @@ Note that I'd be happy to be corrected on these if there's a standard out there
 that I missed.
 
 
-
-== INTERNAL ARCHITECTURE OVERVIEW ==
+## Internal Architecture Overview ##
 
 There are four essential families of classes that the svnlib employs:
 
@@ -163,14 +158,14 @@ are called from an SvnCommand object. These objects store relevant information
 about the opt until execution time, at which point they generate a shell string
 using that saved configuration information. The class structure:
 
-                             SvnOpt (Abstract)
-                                    |
-                               (Children)
-                                    |
-      |---------|---------|---------|---------|--------|---------|---------|
-      |         |         |         |         |        |         |         |
-  SvnOptAccept  | SvnOptChangelist  |    SvnOptDepth   |    SvnOptMessage  |
-          SvnOptRevision      SvnOptConfigDir     SvnOptEncoding        (etc.)
+                              SvnOpt (Abstract)
+                                     |
+                                (Children)
+                                     |
+       |---------|---------|---------|---------|--------|---------|---------|
+       |         |         |         |         |        |         |         |
+   SvnOptAccept  | SvnOptChangelist  |    SvnOptDepth   |    SvnOptMessage  |
+           SvnOptRevision      SvnOptConfigDir     SvnOptEncoding        (etc.)
 
 
 Switches are simple enough that they don't need their own objects for handling;
@@ -183,12 +178,11 @@ halfway attempt at abstracting as much of svnlib's approach as possible. The
 interfaces will likely mature considerably with time.
 
 
-More Complex Behavior (Goodies!)
---------------------------------
+## More Complex Behavior (Goodies!) ##
 
 The svnlib has a number of ways that its behavior can be streamlined and optimized.
 
-= COMMAND CHAINING =
+### Command Chaining ###
 
 Publicly visible code in svnlib is almost entirely a fluent API; exceptions are
 few and far between, mostly documented, and usually intentional (i.e., there
@@ -205,7 +199,7 @@ All of the command queuing methods are fluent, so they can be chained. Execute,
 by default, is not fluent, but instead returns the generated output (at least
 for SvnRead-descended subcommands).
 
-= SMART PARAMETER QUEUING/STORAGE =
+### Smart Parameter Queueing/Storage ###
 
 Some parameters can be passed multiple times to some subcommands; others can
 only be passed once. The svnlib is aware of this, and handles it mostly
@@ -241,7 +235,7 @@ will generate the system call:
 The first revision opt will be overwritten by the later revision opt and never
 make it into the call.
 
-= MASS TARGETING =
+### Mass Targeting ###
 
 The --targets command line option allows you to specify a file from which svn
 should read the list of targets for command execution. Svnlib leverages this
@@ -274,7 +268,7 @@ command preparation logic is smart enough to know that both are present, and
 will smoosh the aggregated targets with the contents of the explicit targets
 file into the temp file at execution time.
 
-= FUN WITH COMMAND SWITCHES =
+### Fun with Command Switches ###
 
 The various methods for setting command parameters are handy, but aren't always
 adequate. If necessary, there are some other approaches to accessing and
@@ -292,7 +286,7 @@ overwrite it completely with a fresh set of bits.
 See the docblocks for SvnCommand and children for the constants that are used to
 represent the various command switches.
 
-= CUSTOM OUTPUT PARSERS =
+### Custom Output Parsers ###
 
 Svnlib's built in output parsers are, at best, weak. While they do the handy
 job of implementing some SPL interfaces that cut down on memory use, they also
@@ -311,7 +305,7 @@ Here are some bullet points to keep in mind when implementing your own parser:
     opens up possibilities like chaining multiple outputs through a single
     parser - which is the closest thing svnlib has to piping support right now.
 
-= SVNCOMMAND::CLEAR() =
+### SvnCommand::clear() ###
 
 Set up most of the parameters on a command already and don't want (or aren't
 able) to rebuild it after calling SvnCommand::execute()? No prob - just call
@@ -336,16 +330,15 @@ from nonRecursive, and the new target gets added to the end.
 
 See the docblock for SvnCommand::clear() for more details.
 
-= PATH PREFIXING =
+### Path Prefixing ###
 
-= INSTANCE-LEVEL DEFAULTS =
+### Instance-level Defaults ###
 
 Some options can be set at the level of the SvnInstance, and will automatically
 be attached to any commands spawned from that instance.
 
 
-Caveats
--------
+## Caveats ##
 
 - Serious effort has been invested in balancing speed with flexibility for this
   library. All-userspace php can only be so fast, but the real speed bottleneck
