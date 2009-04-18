@@ -1,6 +1,34 @@
 <?php
 
 /**
+ * Dummy parser class that transparently passes output straight back without
+ * any modification, but still implements the CLIParser interface so as to
+ * reduce complexity in CLICommand implementations.
+ */
+class DummyParser implements CLIParser {
+  protected $output;
+
+  public function __construct() {}
+  public function openOutputHandle() {
+    $this->output = fopen('php://temp', 'rw');
+    return $this->output;
+  }
+
+  public function parseOutput() {
+    rewind($this->output);
+    return stream_get_contents($this->output);
+  }
+
+  public function clear() {}
+
+  public function procClose($destruct = FALSE) {
+    if (is_resource($this->output)) {
+      fclose($this->output);
+    }
+  }
+}
+
+/**
  * XML-based parsers.
  */
 
