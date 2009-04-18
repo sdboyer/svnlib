@@ -53,6 +53,12 @@ abstract class SvnCommand implements CLICommand {
   const PRESERVE_CMD_SWITCHES = 0x001;
   const PRESERVE_CMD_OPTS     = 0x002;
   const PRESERVE_INT_SWITCHES = 0x004;
+  const PRESERVE_CMD          = 0x003;
+  /**
+   * It's technically superfluous to set the fourth bit here, but it ensures
+   * that 'ALL' encomapsses SvnRead's extra one, and doesn't hurt SvnWrite.
+   */
+  const PRESERVE_ALL          = 0x015;
 
   protected $switchInfo = array();
   public $cmds = array();
