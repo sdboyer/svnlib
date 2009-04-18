@@ -125,7 +125,7 @@ class SvnWorkingCopy extends SvnInstance {
 
   public function verify() {
     if (!$this->isDir()) {
-      throw new Exception(__CLASS__ . ' requires a directory argument, but "' . $this->getPathname() . '" was provided.', E_RECOVERABLE_ERROR);
+      throw new Exception(get_class($this) . ' requires a directory argument, but "' . $path . '" was provided.', E_RECOVERABLE_ERROR);
     }
 
     if (!is_dir($this . DIRECTORY_SEPARATOR . '.svn')) {

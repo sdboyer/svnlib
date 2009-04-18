@@ -648,10 +648,11 @@ abstract class SvnRead extends SvnCommand {
       elseif (!is_string($parser) || !class_exists($parser)) {
         // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
         // will always output 'SvnRead'. Keeping it in anyway, in anticipation.
-        throw new Exception("Unsupported operand type passed to " . __CLASS__ . "::setParser.", E_RECOVERABLE_ERROR);
+        // UPDATE: Trying it with just get_class()
+        throw new Exception("Unsupported operand type passed to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
       }
       elseif (!class_exists($parser)) {
-        throw new Exception("Undeclared class '$parser' provided to " . __CLASS__ . "::setParser.", E_RECOVERABLE_ERROR);
+        throw new Exception("Undeclared class '$parser' provided to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
       }
       $this->parser = new $parser();
     }
