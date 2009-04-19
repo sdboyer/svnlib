@@ -69,9 +69,9 @@ abstract class SvnCommand implements CLICommand {
 
   /**
    *
-   * @var SvnInstance
+   * @var SvnCommandConfig
    */
-  protected $svnRoot;
+  protected $config;
 
   protected $procPipes = array();
 
@@ -81,14 +81,22 @@ abstract class SvnCommand implements CLICommand {
   public $cmdSwitches = 0;
   protected $cmdOpts = array();
 
-  public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
-    $this->svnRoot = $svnRoot;
+  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
+    $this->config = $config;
     
     // Set up the cmdSwitches array for use.
     $this->setSwitches();
 
-    if ($defaults) {
+    if ($defaults & SvnInstance::USE_DEFAULTS) {
       $this->setDefaults();
+    }
+
+    if ($defaults & SvnInstance::PASS_CONFIG) {
+      $this->getPassedConfig();
+    }
+
+    if ($defaults & SvnInstance::PASS_DEFAULTS) {
+      // TODO not yet implemented
     }
 
   }
@@ -120,9 +128,18 @@ abstract class SvnCommand implements CLICommand {
    *
    * @return SvnCommand
    */
-  public function setDefaults() {
+  protected function setDefaults() {
     $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
     return $this;
+  }
+
+  protected function getPassedConfig() {
+    // Add any global working copy opts that are set.
+    foreach (array('username', 'password', 'configDir') as $prop) {
+      if (!empty($this->config->$prop)) {
+        $this->$prop($this->config->$prop);
+      }
+    }
   }
 
   /**
@@ -130,7 +147,7 @@ abstract class SvnCommand implements CLICommand {
    * @return string
    */
   public function getPrependPath() {
-    return $this->svnRoot->getPrependPath();
+    return $this->config->getPrependPath();
   }
 
   /**
@@ -141,7 +158,7 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
+    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
   }
 
   abstract protected function getProcDescriptor();
@@ -420,7 +437,7 @@ abstract class SvnCommand implements CLICommand {
   }
 
   /**
-   * Prepares the assembled data in the current class for execution by
+   * Prepares the assembled data in the current object for execution by
    * SvnCommand::execute().
    *
    * Note that this function is public such that it can be called separately in
@@ -444,8 +461,8 @@ abstract class SvnCommand implements CLICommand {
     $this->processOpts($opts, $this->cmdOpts);
     asort($opts, SORT_NUMERIC);
     $this->cmds = array_merge($this->cmds, array_keys($opts));
-//    if ($this->svnRoot instanceof SvnWorkingCopy) {
-//      $this->cmds = array_merge($this->svnRoot->prepare(), $this->cmds);
+//    if ($this->config instanceof SvnWorkingCopy) {
+//      $this->cmds = array_merge($this->config->prepare(), $this->cmds);
 //    }
 
     array_unshift($this->cmds, 'svn', $this->command);
@@ -556,8 +573,8 @@ abstract class SvnWrite extends SvnCommand {
   }
 
   protected function procHandle() {
-    if ($this->svnRoot->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->svnRoot->errContainer[$this], E_RECOVERABLE_ERROR);
+    if ($this->config->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
+      throw new Exception('svn failed with the following message: ' . $this->config->errContainer[$this], E_RECOVERABLE_ERROR);
       return;
     }
   }
@@ -594,8 +611,8 @@ abstract class SvnRead extends SvnCommand {
 
   public static $operatesOnRepositories = TRUE;
 
-//  public function __construct(SvnInstance $svnRoot, $defaults = TRUE) {
-//    parent::__construct($svnRoot, $defaults);
+//  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
+//    parent::__construct($config, $defaults);
 //  }
 
   protected function getProcDescriptor() {
@@ -663,12 +680,20 @@ abstract class SvnRead extends SvnCommand {
   }
 
   public function execute($fluent = FALSE) {
-    // If we're set to parse output, use the currently set parser; otherwise, 
+    // If we're set to parse output, use the currently set parser; otherwise,
     if ($this->internalSwitches & self::PARSE_OUTPUT) {
+      if (!$this->parser instanceof CLIParser) {
+        throw new Exception("Output parsing requested, but no output parser was set.", E_ERROR);
+      }
+      // other, more forgiving approach
+      // if (!$this->parser instanceof CLIParser) { $this->setParser(); }
       $this->activeParser =& $this->parser;
     }
     elseif (!$this->activeParser instanceof DummyParser) {
       $this->activeParser = new DummyParser();
+    }
+    else {
+      throw new Exception("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
     }
     parent::execute(FALSE);
     return $fluent ? $this : $this->ret;
@@ -676,7 +701,7 @@ abstract class SvnRead extends SvnCommand {
 
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->svnRoot->getWorkingPath(), NULL);
+    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
   }
 
   /**
@@ -686,8 +711,8 @@ abstract class SvnRead extends SvnCommand {
    * A crucial part of SvnInstace::procHandle() is the handling it provides for
    * error output. For SvnRead and children, there is a knotty problem to be
    * solved there, due to the fact that PHP will hang if:
-   *  - In SvnRead::getProcDescriptor() defines a process descriptor with pipes
-   *    on BOTH stdin and stdout (pipes 1 and 2, respectively).
+   *  - SvnRead::getProcDescriptor() defines a process descriptor with pipes on
+   *    BOTH stdout and stderr (descriptors 1 and 2, respectively).
    *  - stream_get_contents() is called on the stderr output pipe (here,
    *    $this->procPipes[2]) before output is collected from the stdout pipe.
    *
@@ -696,7 +721,7 @@ abstract class SvnRead extends SvnCommand {
    * will actually be run. Consequently, when PHP tries to connect to the stderr
    * pipe first, we get caught indefinitely waiting - on the one end, the system
    * is waiting for something on the read end of stdout, and on the other, PHP
-   * is waiting for stderr to be filled.
+   * is waiting for the read end of stderr to be filled.
    *
    * The svnlib provides two types of output parsers by default. There's the
    * specialized output parsers, typically XML-oriented, most of which share
@@ -745,7 +770,7 @@ abstract class SvnRead extends SvnCommand {
     if ($stderr = stream_get_contents($this->procPipes[2])) {
       $status = proc_get_status($this->process);
       if ($status['exitcode']) {
-        throw new Exception('svn failed with the following message: ' . stream_get_contents($this->procPipes[2]), E_RECOVERABLE_ERROR);
+        throw new Exception('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
       }
     }
   }

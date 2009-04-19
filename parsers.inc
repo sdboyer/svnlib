@@ -53,7 +53,10 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
   abstract protected function parse($item);
 
   public function procClose($destruct = FALSE) {
-    fclose($this->output);
+    // FIXME: this check should probably be made superfluous, but it's throwing an error atm.
+    if (is_resource($this->output)) {
+      fclose($this->output);
+    }
   }
 }
 
@@ -68,6 +71,7 @@ class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
   protected $raw;
 
   public function parseOutput() {
+    rewind($this->output);
     $this->raw = stream_get_contents($this->output);
     parent::__construct(new SimpleXMLIterator($this->raw));
   }
@@ -136,6 +140,7 @@ class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
 //  }
 
   public function parseOutput() {
+    rewind($this->output);
     $this->raw = stream_get_contents($this->output);
     parent::__construct(new SimpleXMLIterator($this->raw));
   }
