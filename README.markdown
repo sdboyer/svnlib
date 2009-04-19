@@ -64,10 +64,11 @@ name of the subcommand to be invoked:
 
     $info = $wc->svn('info');
 
-$info now contains an svn subcommand object (a child of the SvnCommand abstract
-class; in the example, an SvnInfo object) which you 'prepare' by adding
-parameters using the provided methods. The method names are all the same as the
-parameters for svn subcommands you already know and love:
+$info now contains an SvnCommand object (a child of the SvnCommand abstract
+class, the class diagram is below); in the example, an SvnInfo object. This
+command object is then prepared by queueing up parameters using the provided
+methods. The method names are all the same as the parameters for svn subcommands
+you already know and love:
 
     // turns on the '--xml' switch
     $info->xml();
