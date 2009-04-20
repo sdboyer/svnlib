@@ -708,7 +708,7 @@ abstract class SvnRead extends SvnCommand {
    * The meat of execution - process input/output/error is all handled by this
    * method.
    *
-   * A crucial part of SvnInstace::procHandle() is the handling it provides for
+   * A crucial part of SvnCommand::procHandle() is the handling it provides for
    * error output. For SvnRead and children, there is a knotty problem to be
    * solved there, due to the fact that PHP will hang if:
    *  - SvnRead::getProcDescriptor() defines a process descriptor with pipes on
