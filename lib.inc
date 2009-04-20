@@ -129,4 +129,14 @@ class ProcHandleErrOut extends ProcHandleGeneric {
     $this->output = fopen('php://temp', 'rw');
     return $this->output;
   }
+
+  public function procHandle() {
+    $this->stdErr = stream_get_contents($this->procPipes[2]);
+    if ($this->stdErr) {
+      $status = proc_get_status($this->process);
+      if ($status['exitcode']) {
+        throw new Exception('svn failed with the following message: ' . $this->stdErr, E_RECOVERABLE_ERROR);
+      }
+    }
+  }
 }
