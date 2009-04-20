@@ -729,7 +729,7 @@ abstract class SvnRead extends SvnCommand {
    * DummyParser that acts as a transparent stand-in class, satisfying the
    * CLIParser interface when SvnRead::PARSE_OUTPUT is not set (and thereby
    * preventing klugey code for passing raw output in the svnlib itself). All of
-   * these eschew pipes for file pointer resources, typically streams of
+   * these eschew pipes for file pointer resources (typically streams of type
    * php://temp), so this is not a problem under native circumstances. However,
    * client code could easily pass in a parser that does use a pipe for stdout
    * (TODO: although the svnlib, as currently written, does not support this),

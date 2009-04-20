@@ -349,12 +349,12 @@ be attached to any commands spawned from that instance.
 
 ## Caveats ##
 
- *  Serious effort has been invested in balancing speed with flexibility for this
-    library. All-userspace php can only be so fast, but the real speed bottleneck
-    is system calls. If you are concerned about speed, _the most important_ place
-    to optimize code that utilizes this library is in minimizing the number of
-    times you call SvnCommand::execute(). Cache, queue commands, do whatever it
-    takes to minimize those calls.
+ *  Serious effort has been invested in balancing speed with flexibility for
+    this library. All-userspace php can only be so fast, but the real speed
+    bottleneck is the system calls. If you are concerned about speed, _the most
+    important_ place to optimize code that utilizes this library is in
+    minimizing the number of times you call SvnCommand::execute(). Cache, queue
+    commands, do whatever it takes to minimize those calls.
 
 ## License ##
 
