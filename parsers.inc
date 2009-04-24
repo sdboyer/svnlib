@@ -35,9 +35,27 @@ class DummyParser implements CLIParser {
 abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
   protected $output;
   
-
+  /**
+   * Override the IteratorIterator constructor so that it's possible to create
+   * the object before we have output for it to parse and make iterable.
+   */
   public function __construct() {
 
+  }
+
+  /**
+   * Delayed backdoor into the IteratorIterator constructor.
+   * @param Iterator $it
+   */
+  final public function build(Iterator $it) {
+    parent::__construct($it);
+  }
+
+  public function parseOutput() {
+    rewind($this->output);
+    $this->raw = stream_get_contents($this->output);
+    $this->build(new SimpleXMLIterator($this->raw));
+    return $this;
   }
 
   public function current() {
@@ -70,11 +88,11 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
 class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
   protected $raw;
 
-  public function parseOutput() {
-    rewind($this->output);
-    $this->raw = stream_get_contents($this->output);
-    parent::__construct(new SimpleXMLIterator($this->raw));
-  }
+//  public function parseOutput() {
+//    rewind($this->output);
+//    $this->raw = stream_get_contents($this->output);
+//    parent::__construct(new SimpleXMLIterator($this->raw));
+//  }
 
   protected function parse($entry) {
     $item = array(
@@ -138,12 +156,6 @@ class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
 //  public function current() {
 //    return $this->parse($this->getInnerIterator()->current());
 //  }
-
-  public function parseOutput() {
-    rewind($this->output);
-    $this->raw = stream_get_contents($this->output);
-    parent::__construct(new SimpleXMLIterator($this->raw));
-  }
 
   protected function parse($rev) {
     $paths = array();
