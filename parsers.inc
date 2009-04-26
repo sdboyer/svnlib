@@ -1,5 +1,12 @@
 <?php
 
+/*
+ * The LIBXML_COMPACT flag can supposedly improve php's libxml performance, but
+ * only if system's version of LIBXML is 2.6.21 or newer.
+ */
+
+define('SVNLIB_LIBXML_FLAGS', LIBXML_VERSION >= 20621 ? LIBXML_COMPACT | LIBXML_NONET : LIBXML_NONET);
+
 /**
  * Dummy parser class that transparently passes output straight back without
  * any modification, but still implements the CLIParser interface so as to
@@ -53,8 +60,8 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
 
   public function parseOutput() {
     rewind($this->output);
-    $this->raw = stream_get_contents($this->output);
-    $this->build(new SimpleXMLIterator($this->raw));
+    $raw = stream_get_contents($this->output);
+    $this->build(new SimpleXMLIterator($raw), SVNLIB_LIBXML_FLAGS);
     return $this;
   }
 
@@ -86,7 +93,6 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
  *
  */
 class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
-  protected $raw;
 
 //  public function parseOutput() {
 //    rewind($this->output);
@@ -115,40 +121,54 @@ class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
     return $item;
   }
 
-  public function seekDouble($rev = NULL, $path = NULL) {
-    $items = $query = array();
-    if (!is_null($rev)) {
-      $query[] = "@revision = '$rev'";
+  public function seek($args) {
+    if (isset($args['rev'], $args['path'])) {
+      return $this->seekBoth($args['rev'], $args['path']);
     }
-    if (!is_null($path)) {
-      $query[] = "@path = '$rev'";
+    elseif (isset($args['rev']) xor isset($args['path'])) {
+      return isset($args['rev']) ? $this->seekRev($args['rev']) : $this->seekPath($args['path']);
     }
-    elseif (empty($query)) {
-      throw new Exception('No arguments provided for xpath query.', E_RECOVERABLE_ERROR);
-    }
-    foreach ($this->getInnerIterator()->xpath('/info/entry[' . implode(' and ', $query) . ']') as $entry) {
+    throw new Exception('No arguments provided for xpath query.', E_RECOVERABLE_ERROR);
+  }
+
+  public function seekRev($rev) {
+    $items = array();
+    // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']")) as $item) {
+    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']") as $entry) {
       $item = $this->parse($entry);
       $items[$item['path']] = $item;
     }
     return $items;
   }
 
-  public function seek($rev) {
+  public function seekPath($path) {
     $items = array();
-    foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']")) as $item) {
-      $items[$item['path']] = $item;
+    // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@path='$path']")) as $item) {
+    foreach ($this->getInnerIterator()->xpath("/info/entry[@path='$path']") as $entry) {
+      $item = $this->parse($entry);
+      $items[$item['rev']] = $item;
     }
     return $items;
   }
 
+  public function seekBoth($rev, $path) {
+    $items = $query = array();
+    $query[] = "@revision = '$rev'";
+    $query[] = "@path = '$path'";
+    foreach ($this->getInnerIterator()->xpath('/info/entry[' . implode(' and ', $query) . ']') as $entry) {
+      $item = $this->parse($entry);
+      $items[$item['path']] = $item;
+    }
+    return $items;
+  }
+  
   public function clear() {
-    unset($this->raw);
+    // unset($this->raw);
   }
 }
 
 
 class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
-  protected $raw;
   protected $rev;
 //  public function __construct($xml) {
 //    parent::__construct(new SimpleXMLIterator($xml));
@@ -158,37 +178,55 @@ class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
 //  }
 
   protected function parse($rev) {
-    $paths = array();
-    foreach ($rev->paths->path as $logpath) {
-      $path = array(
-        'path' => (string) $logpath,
-        'action' => (string) $logpath['action'],
-      );
-      if (!empty($logpath['copyfrom-path'])) {
-        $path['copyfrom'] = array(
-          'path' => (string) $logpath['copyfrom-path'],
-          'rev' => (string) $logpath['copyfrom-rev'],
-        );
-      }
-      $paths[$path['path']] = $path;
-    }
-
     $revision = array(
       'rev'     => intval((string) $rev['revision']),
       'author'  => (string) $rev->author,
       'msg'     => rtrim($rev->msg), // no trailing linebreaks
       'time_t'  => strtotime($rev->date),
-      'paths'   => $paths,
     );
+
+    if (is_array($rev->paths)) {
+      $paths = array();
+      foreach ($rev->paths->path as $logpath) {
+        $path = array(
+          'path' => (string) $logpath,
+          'action' => (string) $logpath['action'],
+        );
+        if (!empty($logpath['copyfrom-path'])) {
+          $path['copyfrom'] = array(
+            'path' => (string) $logpath['copyfrom-path'],
+            'rev' => (string) $logpath['copyfrom-rev'],
+          );
+        }
+        elseif ($path['action'] == 'D') {
+          // On delete actions, check if this is one of the annoying kind
+          // starts-with(haystack,needle)
+          $xpath = 'starts-with("' . $path['path'] . '",paths/path[@action = "A" and @copyfrom-rev and @copyfrom-path])';
+          $parents = $rev->xpath($xpath);
+          $err = libxml_get_errors();
+          foreach ($rps as $add_path) {
+            if (strpos($path['path'], $add_path['path']) !== FALSE) {
+              $path['delfrom'] = array(
+                'path' => $add_path['copyfrom-path'] . substr($path['path'], strlen($add_path['path'])),
+                'rev' => $add_path['copyfrom-rev'],
+              );
+            }
+          }
+        }
+        $paths[(string) $logpath] = $path;
+      }
+      $revision['paths'] = $paths;
+    }
     return $revision;
   }
 
   public function seek($position) {
-    return $this->parse($this->getInnerIterator()->xpath("/log/logentry[@revision='$position']"));
+    $result = $this->getInnerIterator()->xpath("/log/logentry[@revision='$position']");
+    return $this->parse(reset($result));
   }
 
   public function clear() {
-    unset($this->raw);
+    // unset($this->raw);
   }
 }
 
