@@ -705,7 +705,7 @@ abstract class SvnRead extends SvnCommand {
       }
       // other, more forgiving approach
       // if (!$this->parser instanceof CLIParser) { $this->setParser(); }
-      $this->activeParser =& $this->parser;
+      $this->activeParser = $this->parser;
     }
     elseif (!$this->activeParser instanceof DummyParser) {
       $this->activeParser = new DummyParser();
@@ -714,6 +714,9 @@ abstract class SvnRead extends SvnCommand {
       throw new Exception("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
     }
     parent::execute(FALSE);
+    // Unlink the active parser. Just a pointer if one's been set, or kills the
+    // dummy parser.
+    unset($this->activeParser);
     return $fluent ? $this : $this->ret;
   }
 
@@ -780,7 +783,11 @@ abstract class SvnRead extends SvnCommand {
   }
 
   protected function procClose($destruct = FALSE) {
-    $this->activeParser->procClose($destruct);
+    // Because this can be triggered externally through calls to
+    // SvnCommand::clear(), an activeParser may not be set.
+    if ($this->activeParser instanceof CLIParser) {
+      $this->activeParser->procClose($destruct);
+    }
     parent::procClose();
   }
 
@@ -825,7 +832,7 @@ class SvnInfo extends SvnRead {
 class SvnLog extends SvnRead {
   const WITH_ALL_REVPROPS = 0x20000;
   protected $command = 'log';
-  public $parserClass = 'SvnLogParser';
+  public $parserClass = 'SvnLogXMLParser';
 
   public function setSwitches() {
     parent::setSwitches();
