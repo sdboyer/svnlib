@@ -147,14 +147,14 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
   }
 
   public function seekBoth($rev, $path) {
-    $items = $query = array();
-    $query[] = "@revision = '$rev'";
-    $query[] = "@path = '$path'";
-    foreach ($this->getInnerIterator()->xpath('/info/entry[' . implode(' and ', $query) . ']') as $entry) {
-      $item = $this->parse($entry);
-      $items[$item['path']] = $item;
-    }
-    return $items;
+//    $items = array();
+//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and @path='$path']") as $entry) {
+//      $item = $this->parse($entry);
+//      $items[$item['path']] = $item;
+//    }
+//    return $items;
+    $item = $this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and @path='$path']");
+    return $item;
   }
 }
 
