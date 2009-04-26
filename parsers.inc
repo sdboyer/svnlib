@@ -39,7 +39,7 @@ class DummyParser implements CLIParser {
  * XML-based parsers.
  */
 
-abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
+abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser {
   protected $output;
   
   /**
@@ -82,6 +82,8 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
       fclose($this->output);
     }
   }
+
+  public function clear() {}
 }
 
 /**
@@ -91,13 +93,7 @@ abstract class SvnOutputHandler extends IteratorIterator implements CLIParser {
  * @author sdboyer
  *
  */
-class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
-
-//  public function parseOutput() {
-//    rewind($this->output);
-//    $this->raw = stream_get_contents($this->output);
-//    parent::__construct(new SimpleXMLIterator($this->raw));
-//  }
+class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   protected function parse($entry) {
     $item = array(
@@ -160,21 +156,10 @@ class SvnInfoXMLParser extends SvnOutputHandler implements SeekableIterator {
     }
     return $items;
   }
-  
-  public function clear() {
-    // unset($this->raw);
-  }
 }
 
 
-class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
-  protected $rev;
-//  public function __construct($xml) {
-//    parent::__construct(new SimpleXMLIterator($xml));
-//  }
-//  public function current() {
-//    return $this->parse($this->getInnerIterator()->current());
-//  }
+class SvnLogParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   protected function parse($rev) {
     $revision = array(
@@ -201,8 +186,7 @@ class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
           // On delete actions, check if this is one of the annoying kind. Run
           // an xpath query, querying for an init-substring match from all of
           // the paths in this rev that are type 'A' and have copyfrom info.
-          $xpath = "paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path and starts-with('$path[path]',.)]";
-          $parents = $rev->xpath($xpath);
+          $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path and starts-with('$path[path]',.)]");
           if (count($parents) > 1) {
             throw new Exception("Multiple possible copy/delete parents found for $path[path]@$revision[rev]");
           }
@@ -225,10 +209,6 @@ class SvnLogParser extends SvnOutputHandler implements SeekableIterator {
 
   public function seek($position) {
     return $this->parse(current($this->getInnerIterator()->xpath("/log/logentry[@revision='$position']")));
-  }
-
-  public function clear() {
-    // unset($this->raw);
   }
 }
 
