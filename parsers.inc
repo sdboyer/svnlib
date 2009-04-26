@@ -139,7 +139,7 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
   public function seekPath($path) {
     $items = array();
     // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@path='$path']")) as $item) {
-    foreach ($this->getInnerIterator()->xpath("/info/entry[@path='$path']") as $entry) {
+    foreach ($this->getInnerIterator()->xpath("/info/entry/url[contains(.,'$path')]/..") as $entry) {
       $item = $this->parse($entry);
       $items[$item['rev']] = $item;
     }
@@ -147,14 +147,14 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
   }
 
   public function seekBoth($rev, $path) {
-//    $items = array();
-//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and @path='$path']") as $entry) {
-//      $item = $this->parse($entry);
-//      $items[$item['path']] = $item;
-//    }
-//    return $items;
-    $item = $this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and @path='$path']");
-    return $item;
+//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev'][url=concat(.//root,'/','$path')]") as $entry) {
+     foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']/url[contains(.,'$path')]/..") as $entry) {
+      $item = $this->parse($entry);
+      if (!$item['url'] == $item['repository_root'] . DIRECTORY_SEPARATOR . $path) {
+        continue;
+      }
+      return $item;
+    }
   }
 }
 
