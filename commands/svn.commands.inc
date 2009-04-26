@@ -158,7 +158,15 @@ abstract class SvnCommand implements CLICommand {
    */
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
+    $this->process = proc_open($this->getShellString(), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
+  }
+
+  public function getShellString() {
+    if (!($this->internalSwitches & self::PREPARED)) {
+      $this->prepare(FALSE);
+      $this->shellString = implode(' ', $this->cmds);
+    }
+    return $this->shellString;
   }
 
   abstract protected function getProcDescriptor();
@@ -498,10 +506,6 @@ abstract class SvnCommand implements CLICommand {
    * @return mixed
    */
   public function execute($fluent = FALSE) {
-    if (!($this->internalSwitches & self::PREPARED)) {
-      $this->prepare(FALSE);
-    }
-
     $this->procOpen();
     $this->procHandle();
     $this->procClose();
@@ -715,7 +719,7 @@ abstract class SvnRead extends SvnCommand {
 
   protected function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
+    $this->process = proc_open($this->getShellString(), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
   }
 
   /**
