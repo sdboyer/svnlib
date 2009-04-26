@@ -165,6 +165,23 @@ abstract class SvnCommand implements CLICommand {
   abstract protected function procHandle();
 
   /**
+   * Helper function for SvnCommand::procHandle() that makes it a smidge less
+   * kluge by eliminating the need for duplicating the actual code for checking
+   * stderr.
+   */
+  protected function procHandleStdErr() {
+    if ($stderr = stream_get_contents($this->procPipes[2])) {
+      $status = proc_get_status($this->process);
+      if ($status['exitcode']) {
+        throw new Exception('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
+      }
+//      else {
+//        throw new Exception('svn completed successfully, but threw the following errors during execution: ' . $stderr, E_NOTICE);
+//      }
+    }
+  }
+
+  /**
    * Wrapper for proc_close() that cleans up the currently running process.
    * @return void
    */
@@ -573,10 +590,7 @@ abstract class SvnWrite extends SvnCommand {
   }
 
   protected function procHandle() {
-    if ($this->config->errContainer[$this] = stream_get_contents($this->procPipes[2])) {
-      throw new Exception('svn failed with the following message: ' . $this->config->errContainer[$this], E_RECOVERABLE_ERROR);
-      return;
-    }
+    $this->procHandleStdErr();
   }
 }
 
@@ -758,20 +772,6 @@ abstract class SvnRead extends SvnCommand {
     else {
       $this->procHandleStdErr();
       $this->ret = $this->activeParser->parseOutput();
-    }
-  }
-
-  /**
-   * Helper function for SvnRead::procHandle() that makes it a smidge less
-   * kluge by eliminating the need for duplicating the actual code for checking
-   * stderr.
-   */
-  protected function procHandleStdErr() {
-    if ($stderr = stream_get_contents($this->procPipes[2])) {
-      $status = proc_get_status($this->process);
-      if ($status['exitcode']) {
-        throw new Exception('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
-      }
     }
   }
 
