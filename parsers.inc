@@ -188,13 +188,13 @@ class SvnLogParser extends SvnXMLOutputHandler implements SeekableIterator {
           // the paths in this rev that are type 'A' and have copyfrom info.
           $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path and starts-with('$path[path]',.)]");
           if (count($parents) > 1) {
-            throw new Exception("Multiple possible copy/delete parents found for $path[path]@$revision[rev]");
+            throw new Exception("Multiple possible copy+delete parents found for $path[path]@$revision[rev]");
           }
           else {
             $add_path = array_shift($parents);
             if (strpos($path['path'], (string) $add_path) !== FALSE) {
               $path['delfrom'] = array(
-                'path' => $add_path['copyfrom-path'] . substr($path['path'], strlen($add_path['copyfrom-path'])),
+                'path' => $add_path['copyfrom-path'] . substr($path['path'], strlen($add_path)),
                 'rev' => (string) $add_path['copyfrom-rev'],
               );
             }
