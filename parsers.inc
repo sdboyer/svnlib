@@ -159,18 +159,19 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 }
 
 
-class SvnLogParser extends SvnXMLOutputHandler implements SeekableIterator {
+class SvnLogXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   protected function parse($rev) {
+    $paths = array();
     $revision = array(
       'rev'     => intval((string) $rev['revision']),
       'author'  => (string) $rev->author,
       'msg'     => rtrim($rev->msg), // no trailing linebreaks
       'time_t'  => strtotime($rev->date),
+      'paths'   => &$paths,
     );
 
     if (is_object($rev->paths)) {
-      $paths = array();
       foreach ($rev->paths->path as $logpath) {
         $path = array(
           'path' => (string) $logpath,
@@ -188,21 +189,26 @@ class SvnLogParser extends SvnXMLOutputHandler implements SeekableIterator {
           // the paths in this rev that are type 'A' and have copyfrom info.
           $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path and starts-with('$path[path]',.)]");
           if (count($parents) > 1) {
-            throw new Exception("Multiple possible copy+delete parents found for $path[path]@$revision[rev]");
+            throw new Exception("Multiple possible copy+delete parents found for $path[path]@$revision[rev]; cannot currently handle this.", E_ERROR);
           }
           else {
             $add_path = array_shift($parents);
-            if (strpos($path['path'], (string) $add_path) !== FALSE) {
+            if (empty($add_path)) {
+              continue;
+            }
+            elseif (strpos($path['path'], (string) $add_path) !== FALSE) {
               $path['delfrom'] = array(
                 'path' => $add_path['copyfrom-path'] . substr($path['path'], strlen($add_path)),
                 'rev' => (string) $add_path['copyfrom-rev'],
               );
             }
+            else {
+              throw new Exception('Blargh', E_ERROR);
+            }
           }
         }
         $paths[(string) $logpath] = $path;
       }
-      $revision['paths'] = $paths;
     }
     return $revision;
   }
