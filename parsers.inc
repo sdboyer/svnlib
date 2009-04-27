@@ -95,9 +95,9 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
  */
 class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
-  protected function parse($entry) {
+  protected function parse($entry, $decode = FALSE) {
     $item = array(
-      'url'             => (string) $entry->url,
+      'url'             => $decode ? rawurldecode($entry->url) : (string) $entry->url,
       'repository_root' => (string) $entry->repository->root,
       'repository_uuid' => (string) $entry->repository->uuid,
       'type'            => (string) $entry['kind'],
@@ -112,7 +112,6 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
     else {
       $item['path'] = substr($item['url'], strlen($item['repository_root']));
     }
-    // $relative_path = (string) $entry['path'];
     return $item;
   }
 
@@ -130,7 +129,7 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
     $items = array();
     // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']")) as $item) {
     foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']") as $entry) {
-      $item = $this->parse($entry);
+      $item = $this->parse($entry, TRUE);
       $items[$item['path']] = $item;
     }
     return $items;
@@ -139,8 +138,8 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
   public function seekPath($path) {
     $items = array();
     // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@path='$path']")) as $item) {
-    foreach ($this->getInnerIterator()->xpath("/info/entry/url[contains(.,'$path')]/..") as $entry) {
-      $item = $this->parse($entry);
+    foreach ($this->getInnerIterator()->xpath("/info/entry[url = '$path']") as $entry) {
+      $item = $this->parse($entry, TRUE);
       $items[$item['rev']] = $item;
     }
     return $items;
@@ -148,8 +147,9 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   public function seekBoth($rev, $path) {
 //    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev'][url=concat(.//root,'/','$path')]") as $entry) {
-     foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']/url[contains(.,'$path')]/..") as $entry) {
-      $item = $this->parse($entry);
+//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']/url[contains(.,'$path')]/..") as $entry) {
+    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and url='$path']") as $entry) {
+      $item = $this->parse($entry, TRUE);
       if (!$item['url'] == $item['repository_root'] . DIRECTORY_SEPARATOR . $path) {
         continue;
       }
@@ -184,10 +184,16 @@ class SvnLogXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
           );
         }
         elseif ($path['action'] == 'D') {
+          // First, do the quick-n-easy check to see if this is a move action.
+          $move = $rev->xpath("paths/path[@action = 'A' and @copyfrom-path = '$path[path]");
+          if (!empty($move)) {
+            continue;
+          }
           // On delete actions, check if this is one of the annoying kind. Run
-          // an xpath query, querying for an init-substring match from all of
+          // an xpath query, checking for an init-substring match from all of
           // the paths in this rev that are type 'A' and have copyfrom info.
-          $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path and starts-with('$path[path]',.)]");
+          // $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path != '$path[path]' and starts-with('$path[path]',.)]");
+          $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and starts-with('$path[path]',.)]");
           if (count($parents) > 1) {
             throw new Exception("Multiple possible copy+delete parents found for $path[path]@$revision[rev]; cannot currently handle this.", E_ERROR);
           }
