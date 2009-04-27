@@ -183,9 +183,9 @@ abstract class SvnCommand implements CLICommand {
       if ($status['exitcode']) {
         throw new Exception('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
       }
-//      else {
-//        throw new Exception('svn completed successfully, but threw the following errors during execution: ' . $stderr, E_NOTICE);
-//      }
+      else {
+        throw new Exception('The ' . get_class($this) . ' command completed successfully, but threw the following error(s) during execution: ' . $stderr, E_NOTICE);
+      }
     }
   }
 
@@ -785,7 +785,7 @@ abstract class SvnRead extends SvnCommand {
   protected function procClose($destruct = FALSE) {
     // Because this can be triggered externally through calls to
     // SvnCommand::clear(), an activeParser may not be set.
-    if ($this->activeParser instanceof CLIParser) {
+    if (!empty($this->activeParser)) {
       $this->activeParser->procClose($destruct);
     }
     parent::procClose();
