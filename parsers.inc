@@ -2,7 +2,9 @@
 
 /*
  * The LIBXML_COMPACT flag can supposedly improve php's libxml performance, but
- * only if system's version of LIBXML is 2.6.21 or newer.
+ * only if system's version of LIBXML is 2.6.21 or newer. We always enable
+ * LIBXML_NONET, though, because we never need network access while loading
+ * documents (svn's xml output has no DTD to use).
  */
 
 define('SVNLIB_LIBXML_FLAGS', LIBXML_VERSION >= 20621 ? LIBXML_COMPACT | LIBXML_NONET : LIBXML_NONET);
@@ -41,14 +43,12 @@ class DummyParser implements CLIParser {
 
 abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser {
   protected $output;
-  
+
   /**
    * Override the IteratorIterator constructor so that it's possible to create
    * the object before we have output for it to parse and make iterable.
    */
-  public function __construct() {
-
-  }
+  public function __construct() {}
 
   /**
    * Delayed backdoor into the IteratorIterator constructor.
@@ -106,12 +106,8 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
       'last_author'     => (string) $entry->commit->author,
       'time_t'          => strtotime((string) $entry->commit->date),
     );
-    if ($item['url'] == $item['repository_root']) {
-      $item['path'] = '/';
-    }
-    else {
-      $item['path'] = substr($item['url'], strlen($item['repository_root']));
-    }
+    $item['path'] = ($item['url'] == $item['repository_root'] ? '/' :
+      $item['path'] = substr($item['url'], strlen($item['repository_root'])));
     return $item;
   }
 
