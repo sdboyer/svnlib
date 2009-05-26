@@ -2,6 +2,7 @@
 
 // TODO temporary straight includes until a smarter system is introduced
 require_once dirname(__FILE__) . '/lib.inc';
+require_once dirname(__FILE__) . 'proc.inc';
 require_once dirname(__FILE__) . '/parsers.inc';
 require_once dirname(__FILE__) . '/commands/svn.commands.inc';
 require_once dirname(__FILE__) . '/opts/svn.opts.inc';
@@ -134,6 +135,19 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   public function password($password) {
     $this->config->password = $password ;
     return $this;
+  }
+
+  protected function attachProc(CLICommand $command, CLIProcHandler $proc = NULL) {
+    if (!isnull($proc)) {
+      $proc->attachCommand($command);
+    }
+    elseif ($this->config->proc instanceof CLIProcHandler) {
+      $this->config->proc->attachCommand($command);
+    }
+    else {
+      $proc = $command instanceof CLICommandRead ? new ProcHandleErrOut() : new ProcHandleErrOnly();
+      $proc->attachCommand($command);
+    }
   }
 }
 

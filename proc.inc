@@ -11,6 +11,7 @@
  */
 
 interface CLIProcHandler {
+  public function attachCommand(CLICommand $command);
   public function getProcDescriptor();
   public function &getProcPipes();
   public function procOpen();

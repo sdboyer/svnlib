@@ -31,11 +31,20 @@ class SplObjectMap extends SplObjectStorage implements ArrayAccess {
 
 interface CLIWrapper {
   public function getWorkingPath();
+  protected function attachProc(CLICommand $command);
 }
 
 interface CLICommand {
   public function prepare();
   public function execute();
+}
+
+interface CLICommandRead {
+  // public function parse();
+}
+
+interface CLICommandWrite {
+
 }
 
 interface CLICommandOpt {
