@@ -12,7 +12,7 @@ require_once dirname(__FILE__) . '/opts/svn.opts.inc';
  *
  * SvnWorkingCopy and SvnRepository are the concrete subclasses that extend this
  * class to provide that functionality.
- * 
+ *
  * @author sdboyer
  *
  */
@@ -110,7 +110,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   abstract public function verify($path);
 
   abstract public function getPrependPath();
-  
+
   /**
    *
    * @param string $subcommand
@@ -121,7 +121,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
 
   public function __call($name, $arguments) {
     if (method_exists($this->config, $name)) {
-      call_user_func_array(array($this->config, $name), $arguments);
+      return call_user_func_array(array($this->config, $name), $arguments);
     }
     throw new Exception('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
   }
