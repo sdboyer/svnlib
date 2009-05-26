@@ -18,6 +18,64 @@ interface CLIProcHandler {
   public function procClose();
 }
 
+/**
+ * The ProcStorage class (a Singleton) provides an associational layer that maps
+ * command objects to the process handling objects that manage them.
+ *
+ * This class has little use for plain, single-command invocations; it is
+ * intended primarily for complex chains of piped commands, where client code
+ * may need to directly communicate with the proc handler their commands are
+ * using. It is also easy to perform a simple 'lookup' that determines which
+ * process handler manages any given command object.
+ *
+ * IMPORTANT NOTE: currently, ProcStorage only allows for commands to be
+ * associated with a single proc handler. Attempting to attach a command to
+ * multiple proc handlers will result in an E_RECOVERABLE_ERROR. Because it is
+ * entirely reasonable that client code might want to reuse a single command as
+ * a step in an oft-repeated chain of piped commands, it is on our TODO list
+ * that we do allow such multiple attachments. However, if you require this
+ * functionality right now, you will have to settle for manually cloning that
+ * reused command object for each additional proc handler to which you attach
+ * it.
+ *
+ * @author sdboyer
+ *
+ */
+class ProcStorage {
+  protected static $instance;
+
+  protected $storage;
+
+	protected function __construct() {
+		$this->storage = new SplObjectMap();
+	}
+
+	/**
+	 * Attach a command and its managing proc handler to the storage object.
+	 *
+	 * @param CLICommand $command
+	 * @param CLIProcHandler $handler
+	 * @return void
+	 */
+	public function attachCommand(CLICommand $command, CLIProcHandler $handler) {
+	  if (isset($this->storage[$command])) {
+	    throw new Exception("Attempted to assign a command to a proc handler, but that command already has a proc handler.", E_RECOVERABLE_ERROR);
+	  }
+	  $this->storage[$command] = $handler;
+	}
+
+	public function hasCommand(CLICommand $command) {
+	  return isset($this->storage[$command]);
+	}
+
+  public static function getInstance() {
+    if (empty(self::$instance)) {
+      self::$instance = new ProcStorage();
+    }
+    return self::$instance;
+  }
+}
+
 abstract class ProcHandleGeneric implements CLIProcHandler {
   protected $procDescriptor = array();
   protected $procPipes = array();
