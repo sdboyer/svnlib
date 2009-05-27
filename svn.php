@@ -303,7 +303,7 @@ class SvnRepository extends SvnInstance {
   public function isWritable() {
     // TODO write capable just gets us in the door, we then need to run
     // more checks
-    return self::$protocols[$this->protocol] & self::PCUD; // FIXME should be self::WRITE_CAPABLE
+    return self::$protocols[$this->protocol] & self::PCUD;
   }
 
   public function svnadmin($subcommand, CLIProcHandler $proc = NULL, $defaults = NULL) {
