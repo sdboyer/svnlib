@@ -240,7 +240,7 @@ whereas the commands:
 
 will generate the system call:
 
-    $ svn --revision 111 index.php .htaccess@822
+    $ svn info --revision 111 index.php .htaccess@822
 
 The first revision opt will be overwritten by the later revision opt and never
 make it into the call.
