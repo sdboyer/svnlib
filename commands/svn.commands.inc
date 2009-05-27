@@ -83,7 +83,7 @@ abstract class SvnCommand implements CLICommand {
 
   public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
     $this->config = $config;
-    
+
     // Set up the cmdSwitches array for use.
     $this->setSwitches();
 
@@ -206,7 +206,7 @@ abstract class SvnCommand implements CLICommand {
   /**
    * Flush the object of its internal data and state, readying it for a new
    * command to be run.
-   * 
+   *
    * This method can safely be called regardless of whether or not execute() has
    * been called with the current object.
    *
@@ -536,7 +536,7 @@ abstract class SvnCommand implements CLICommand {
       $opts[$arg->getShellString()] = $arg->getOrdinal();
     }
   }
-  
+
   /**
    *
    * @param string $target
@@ -580,8 +580,8 @@ abstract class SvnCommand implements CLICommand {
 
 abstract class SvnWrite extends SvnCommand {
 
-  public static $operatesOnRepositories = FALSE;
-    
+  const OPERATES_ON_REPOSITORIES = FALSE;
+
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
@@ -627,7 +627,7 @@ abstract class SvnRead extends SvnCommand {
 
   protected $ret;
 
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
 
 //  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
 //    parent::__construct($config, $defaults);
@@ -851,7 +851,7 @@ class SvnList extends SvnRead {
 
 class SvnStatus extends SvnRead {
   const SHOW_UPDATES = 0x20000;
-  
+
   protected $command = 'status';
 
   public function setSwitches() {
@@ -864,7 +864,7 @@ class SvnMerge extends SvnWrite {
   const REINTEGRATE = 0x20000;
   const RECORD_ONLY = 0x40000;
 
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'merge';
 
   public function setSwitches() {
@@ -876,7 +876,7 @@ class SvnMerge extends SvnWrite {
 
 class SvnPropGet extends SvnRead {
   const STRICT = 0x20000;
-  // public static $operatesOnRepositories = TRUE;
+  // const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'propget';
 
   public function setSwitches() {
@@ -899,7 +899,7 @@ class SvnCommit extends SvnWrite {
 class SvnDelete extends SvnWrite {
   const KEEP_LOCAL = 0x20000;
 
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'delete';
 
   public function setSwitches() {
@@ -925,7 +925,7 @@ class SvnChangelist extends SvnWrite {
 }
 
 class SvnCheckout extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'checkout';
 }
 
@@ -934,7 +934,7 @@ class SvnCleanup extends SvnWrite {
 }
 
 class SvnCopy extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'copy';
 }
 
@@ -943,12 +943,12 @@ class SvnDiff extends SvnRead {
 }
 
 class SvnExport extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'export';
 }
 
 class SvnImport extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'import';
 }
 
@@ -961,22 +961,22 @@ class SvnMergeinfo extends SvnRead {
 }
 
 class SvnMkdir extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'mkdir';
 }
 
 class SvnMove extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'move';
 }
 
 class SvnPropdel extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'propdel';
 }
 
 class SvnPropedit extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'propedit';
 }
 
@@ -985,7 +985,7 @@ class SvnProplist extends SvnRead {
 }
 
 class SvnPropset extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'propset';
 }
 
@@ -1006,7 +1006,7 @@ class SvnSwitch extends SvnWrite {
 }
 
 class SvnUnlock extends SvnWrite {
-  public static $operatesOnRepositories = TRUE;
+  const OPERATES_ON_REPOSITORIES = TRUE;
   protected $command = 'unlock';
 }
 
