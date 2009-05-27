@@ -506,20 +506,25 @@ abstract class SvnCommand implements CLICommand {
    * @return mixed
    */
   public function execute($fluent = FALSE) {
-    $this->procOpen();
+    return ProcStorage::getInstance()->getProcHandler($this)->execute($fluent);
+
+/*    $this->procOpen();
     $this->procHandle();
     $this->procClose();
 
     if ($fluent) {
       return $this;
-    }
+    }*/
   }
 
   /**
    * Helper function for SvnCommand::prepare().
    *
-   * @param $opts
-   * @param $arg
+   * Recursive function that builds an array containing the shell strings of
+   * all the queued opts (as keys) and their ordinal position (as values).
+   *
+   * @param array $opts
+   * @param mixed $arg
    * @return void
    */
   protected function processOpts(&$opts, $arg) {
@@ -529,10 +534,6 @@ abstract class SvnCommand implements CLICommand {
       }
     }
     else {
-      // TODO This will probably work well (may even have some elegant benefits
-      // b/c it ought to effectively prevent duplicate shell params. HOWEVER, a
-      // better, smarter system that leverages an ArrayObject + SplObjectStorage
-      // structure is the eventual goal.
       $opts[$arg->getShellString()] = $arg->getOrdinal();
     }
   }
@@ -581,6 +582,7 @@ abstract class SvnCommand implements CLICommand {
 abstract class SvnWrite extends SvnCommand {
 
   const OPERATES_ON_REPOSITORIES = FALSE;
+  const PROC_HANDLER = 'ProcHandleErrOnly';
 
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
@@ -628,6 +630,7 @@ abstract class SvnRead extends SvnCommand {
   protected $ret;
 
   const OPERATES_ON_REPOSITORIES = TRUE;
+  const PROC_HANDLER = 'ProcHandleErrOut';
 
 //  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
 //    parent::__construct($config, $defaults);

@@ -40,7 +40,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     parent::__construct($path);
 
     $this->config = new SvnCommandConfig();
-    $this->config->attachInstance($this);
+    $this->config->attachWrapper($this);
 
     // Because it's very easy for the svnlib to fail (hard and with weird errors)
     // if a config dir isn't present, we set it to the unintrusive default that
@@ -118,7 +118,42 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param bool $defaults
    * @return SvnCommand
    */
-  abstract public function svn($subcommand, $defaults = self::PCUD);
+  abstract public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD);
+
+  /**
+   * Kind of a silly little helper function. Verifies the requested command
+   * class exists, then figures out what the proc handler should be. Returns the
+   * reflection class for the concrete implementation to mess around with as
+   * needed.
+   *
+   * @param $classname
+   * @return ReflectionClass
+   */
+  protected function getProcHandler($classname, &$proc) {
+    if (!class_exists($classname)) {
+      throw new Exception("Invalid subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+    }
+    $reflection = new ReflectionClass($classname);
+    if (is_null($proc)) {
+      // If no proc handler was explicitly specified, then first try the global
+      // proc handler specified on this CLIWrapper (if any).
+      if (!empty($this->config->proc) && $this->config->proc instanceof CLIProcHandler) {
+        $proc = &$this->config->proc;
+      }
+      else {
+        // Lowest priority (and most common) case: no global proc handler
+        // specified on this CLIWrapper object; use the default specified by the
+        // command. This is the most common case.
+        $proc_class = $reflection->getConstant('PROC_HANDLER');
+        if (!class_exists($proc_class)) {
+          throw new Exception("The requested command specified an unknown class, '$proc_class', as the default process handler", E_RECOVERABLE_ERROR);
+        }
+        $proc = new $proc_class();
+      }
+    }
+    $proc->attachConfig($this->config);
+    return $reflection;
+  }
 
   public function __call($name, $arguments) {
     if (method_exists($this->config, $name)) {
@@ -135,19 +170,6 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   public function password($password) {
     $this->config->password = $password ;
     return $this;
-  }
-
-  protected function attachProc(CLICommand $command, CLIProcHandler $proc = NULL) {
-    if (!isnull($proc)) {
-      $proc->attachCommand($command);
-    }
-    elseif ($this->config->proc instanceof CLIProcHandler) {
-      $this->config->proc->attachCommand($command);
-    }
-    else {
-      $proc = $command instanceof CLICommandRead ? new ProcHandleErrOut() : new ProcHandleErrOnly();
-      $proc->attachCommand($command);
-    }
   }
 }
 
@@ -186,14 +208,12 @@ class SvnWorkingCopy extends SvnInstance {
     return;
   }
 
-  public function svn($subcommand, $defaults = self::PCUD) {
+  public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
     $classname = 'svn' . $subcommand;
-    if (!class_exists($classname)) {
-      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
-    }
-    $this->cmd = new $classname($this->config, $defaults);
-
-    return $this->cmd;
+    $reflection = $this->getProcHandler($classname, $proc);
+    $cmd = new $classname($this->config, $defaults);
+    $proc->attachCommand($cmd);
+    return $cmd;
   }
 }
 
@@ -258,12 +278,10 @@ class SvnRepository extends SvnInstance {
     return NULL;
   }
 
-  public function svn($subcommand, $defaults = self::PCUD) {
+  public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
-    if (!class_exists($classname)) {
-      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
-    }
-    $reflection = new ReflectionClass($classname);
+    $reflection = $this->getProcHandler($classname, $proc);
+
     if (!$reflection->getConstant('operatesOnRepositories')) {
       throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
@@ -271,8 +289,9 @@ class SvnRepository extends SvnInstance {
       throw new Exception("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
     }
 
-    $this->cmd = new $classname($this->config, $defaults);
-    return $this->cmd;
+    $cmd = new $classname($this->config, $defaults);
+    $proc->attachCommand($cmd);
+    return $cmd;
   }
 
   /**
@@ -284,21 +303,20 @@ class SvnRepository extends SvnInstance {
   public function isWritable() {
     // TODO write capable just gets us in the door, we then need to run
     // more checks
-    return self::$protocols[$this->protocol] & self::PCUD;
+    return self::$protocols[$this->protocol] & self::PCUD; // FIXME should be self::WRITE_CAPABLE
   }
 
-  public function svnadmin($subcommand, $defaults = NULL) {
+  public function svnadmin($subcommand, CLIProcHandler $proc = NULL, $defaults = NULL) {
     $classname = 'Svnadmin' . $subcommand;
-    if (!class_exists($classname)) {
-      throw new Exception("Invalid svnadmin subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
-    }
+    $reflection = $this->getProcHandler($classname, $proc);
 
-    $this->cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
-    return $this->cmd;
+    $cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
+    $proc->attachCommand($cmd);
+    return $cmd;
   }
 }
 
-class SvnCommandConfig {
+class SvnCommandConfig implements CLIWrapperConfig {
   /**
    *
    * @var SvnInstance
@@ -315,8 +333,8 @@ class SvnCommandConfig {
 
   public function __construct() {}
 
-  public function attachInstance(SvnInstance $instance) {
-    $this->instance = $instance;
+  public function attachWrapper(CLIWrapper $wrapper) {
+    $this->instance = $wrapper;
   }
 
   public function username($username) {

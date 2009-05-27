@@ -31,12 +31,34 @@ class SplObjectMap extends SplObjectStorage implements ArrayAccess {
 
 interface CLIWrapper {
   public function getWorkingPath();
-  protected function attachProc(CLICommand $command);
+}
+
+interface CLIWrapperConfig {
+  public function getWorkingPath();
+  public function getPrependPath();
+  public function attachWrapper(CLIWrapper $wrapper);
 }
 
 interface CLICommand {
+  const NOTIFY_EXECUTE = 0x001;
+  /**
+   * The name of the class, as a string, that this object prefers as its default
+   * process handler. This process handler will be used if no higher-priority
+   * specification for a different process handler is made.
+   *
+   * @var string
+   */
+  const PROC_HANDLER = NULL;
   public function prepare();
   public function execute();
+  /**
+   * Returns an object implementing the CLIProcHandler interface which should be
+   * used as the default proc handler for this command - i.e., when no other
+   * proc handler is specified.
+   *
+   * @return CLIProcHandler
+   */
+  public static function getDefaultProcHandler();
 }
 
 interface CLICommandRead {

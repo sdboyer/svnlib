@@ -12,6 +12,7 @@
 
 interface CLIProcHandler {
   public function attachCommand(CLICommand $command);
+  public function attachConfig(CLIWrapperConfig $config);
   public function getProcDescriptor();
   public function &getProcPipes();
   public function procOpen();
@@ -69,6 +70,14 @@ class ProcStorage {
 	  return isset($this->storage[$command]);
 	}
 
+	public function getProcHandler(CLICommand $command) {
+	  return $this->storage[$command];
+	}
+
+	public function detachCommand(CLICommand $command) {
+	  unset($this->storage[$command]);
+	}
+
   public static function getInstance() {
     if (empty(self::$instance)) {
       self::$instance = new ProcStorage();
@@ -81,6 +90,13 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
   protected $procDescriptor = array();
   protected $procPipes = array();
   protected $process;
+  protected $command;
+  protected $ps;
+  protected $config;
+
+  public function __construct() {
+    $this->ps = ProcStorage::getInstance();
+  }
 
   public function getProcDescriptor() {
     return $this->procDescriptor;
@@ -105,7 +121,14 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
     }
   }
 
-  // abstract public function procHandle();
+  public function attachCommand(CLICommand &$command) {
+    $this->command = &$command;
+    $this->ps->attachCommand($command, $this);
+  }
+
+  public function attachConfig(CLIWrapperConfig &$config) {
+    $this->wrapper = &$config;
+  }
 }
 
 class ProcHandleErrOnly extends ProcHandleGeneric {
