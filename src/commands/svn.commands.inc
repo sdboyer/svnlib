@@ -71,7 +71,7 @@ abstract class SvnCommand implements CLICommand {
    *
    * @var SvnCommandConfig
    */
-  protected $config;
+  public $config;
 
   protected $procPipes = array();
 
