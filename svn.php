@@ -171,6 +171,11 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     $this->config->password = $password ;
     return $this;
   }
+
+  public function configDir($path) {
+    $this->config->configDir = $path;
+    return $this;
+  }
 }
 
 /**
