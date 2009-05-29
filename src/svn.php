@@ -251,7 +251,7 @@ class SvnRepository extends SvnInstance {
       throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
     }
     $reflection = new ReflectionClass($classname);
-    if (!$reflection->getConstant('operatesOnRepositories')) {
+    if (!$reflection->getConstant('OPERATES_ON_REPOSITORIES')) {
       throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
     if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
