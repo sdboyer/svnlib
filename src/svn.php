@@ -64,7 +64,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
       $subpath = substr($url[1], strlen($this->config->repoRoot));
       $this->setSubPath($subpath);
       // Need to re-call the SplFileInfo constructor to point to the real root
-      parent::__construct(substr($this, 0, strlen($subpath)));
+      parent::__construct(substr($this, 0, -strlen($subpath)));
     }
   }
 
