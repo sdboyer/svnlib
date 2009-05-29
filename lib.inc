@@ -78,6 +78,14 @@ interface CLIParser {
   public function clear();
 }
 
+interface CLIParserPipe extends CLIParser {
+
+}
+
+interface CLIParserResource extends CLIParser {
+
+}
+
 interface CLIPipeStdIn {
 
 }
