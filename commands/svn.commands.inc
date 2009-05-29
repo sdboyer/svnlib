@@ -81,7 +81,7 @@ abstract class SvnCommand implements CLICommand {
   public $cmdSwitches = 0;
   protected $cmdOpts = array();
 
-  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
+  public function __construct(SvnCommandConfig $config, $defaults) {
     $this->config = $config;
 
     // Set up the cmdSwitches array for use.
