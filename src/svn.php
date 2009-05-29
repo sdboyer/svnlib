@@ -91,6 +91,8 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * the subpath while in the midst of queuing up a command. This internal
    * behavior is also different for repositories than it is for working copies.
    *
+   * To reset the current subpath, simply pass an empty string to this method.
+   *
    * @param string $path
    */
   public function setSubPath($path) {
@@ -103,8 +105,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param string $path
    */
   public function appendSubPath($path) {
-    // FIXME stupid dir separator, when to add it?
-    $this->config->subPath .= DIRECTORY_SEPARATOR . trim($path, '/');
+    $this->config->subPath .= (empty($this->config->subPath) ? '' : DIRECTORY_SEPARATOR) . trim($path, '/');
   }
 
   abstract public function verify($path);
@@ -251,8 +252,8 @@ class SvnRepository extends SvnInstance {
       throw new InvalidArgumentException("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
     }
     $reflection = new ReflectionClass($classname);
-    if (!$reflection->getConstant('operatesOnRepositories')) {
-      throw new InvalidArgumentException('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
+    if (!$reflection->getConstant('OPERATES_ON_REPOSITORIES')) {
+      throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
     if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
       throw new InvalidArgumentException("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
