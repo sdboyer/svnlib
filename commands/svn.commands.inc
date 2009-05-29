@@ -143,14 +143,6 @@ abstract class SvnCommand implements CLICommand {
   }
 
   /**
-   *Temporary klugey func
-   * @return string
-   */
-  public function getPrependPath() {
-    return $this->config->getPrependPath();
-  }
-
-  /**
    * Wrapper for proc_open() that ensures any existing processes have already
    * been cleaned up.
    *
