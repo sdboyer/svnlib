@@ -20,6 +20,18 @@ interface CLIProcHandler {
   public function procClose();
 }
 
+interface CLIProcHandlerStdin {
+
+}
+
+interface CLIProcHandlerStdout {
+
+}
+
+interface CLIProcHandlerStderr {
+
+}
+
 /**
  * The ProcStorage class (a Singleton) provides an associational layer that maps
  * command objects to the process handling objects that manage them.
@@ -131,7 +143,7 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
   }
 }
 
-class ProcHandleErrOnly extends ProcHandleGeneric {
+class ProcHandleErrOnly extends ProcHandleGeneric implements CLIProcHandlerStderr {
   protected $procDescriptor = array(
     2 => array('pipe', 'w'),
   );
@@ -146,7 +158,7 @@ class ProcHandleErrOnly extends ProcHandleGeneric {
   }
 }
 
-class ProcHandleErrOut extends ProcHandleGeneric {
+class ProcHandleErrOut extends ProcHandleGeneric implements CLIProcHandlerStderr, CLIProcHandlerStdout {
   protected $output;
 
   public function getProcDescriptor() {
@@ -171,3 +183,8 @@ class ProcHandleErrOut extends ProcHandleGeneric {
     }
   }
 }
+
+class ProcHandlerErrMulti extends ProcHandleGeneric implements CLIProcHandlerStderr {
+
+}
+
