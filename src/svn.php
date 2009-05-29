@@ -103,8 +103,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param string $path
    */
   public function appendSubPath($path) {
-    // FIXME stupid dir separator, when to add it?
-    $this->config->subPath .= DIRECTORY_SEPARATOR . trim($path, '/');
+    $this->config->subPath .= (empty($this->config->subPath) ? '' : DIRECTORY_SEPARATOR) . trim($path, '/');
   }
 
   abstract public function verify($path);
