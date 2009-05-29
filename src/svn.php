@@ -209,9 +209,7 @@ class SvnWorkingCopy extends SvnInstance {
     return $this->getRootPath();
   }
 
-  public function getPrependPath() {
-    return;
-  }
+  public function getPrependPath() {}
 
   public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
     $classname = 'svn' . $subcommand;
@@ -279,9 +277,7 @@ class SvnRepository extends SvnInstance {
     return $this->getRootPath() . DIRECTORY_SEPARATOR;
   }
 
-  public function getWorkingPath() {
-    return NULL;
-  }
+  public function getWorkingPath() {}
 
   public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
