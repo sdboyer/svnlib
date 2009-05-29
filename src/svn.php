@@ -32,13 +32,13 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   const USE_DEFAULTS   = 0x004;
   const PCUD           = 0x005;
 
-  public function __construct($path, $verify = TRUE) {
+  public function __construct($path, SvnCommandConfig $config = NULL, $verify = TRUE) {
     if ($verify) {
       $this->verify($path);
     }
     parent::__construct($path);
 
-    $this->config = new SvnCommandConfig();
+    $this->config = is_null($config) ? new SvnCommandConfig() : $config;
     $this->config->attachInstance($this);
 
     // Because it's very easy for the svnlib to fail (hard and with weird errors)
@@ -64,7 +64,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
       $subpath = substr($url[1], strlen($this->config->repoRoot));
       $this->setSubPath($subpath);
       // Need to re-call the SplFileInfo constructor to point to the real root
-      parent::__construct(substr($this, 0, strlen($subpath)));
+      parent::__construct(substr($this, 0, -strlen($subpath)));
     }
   }
 
