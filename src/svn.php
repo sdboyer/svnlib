@@ -91,6 +91,8 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * the subpath while in the midst of queuing up a command. This internal
    * behavior is also different for repositories than it is for working copies.
    *
+   * To reset the current subpath, simply pass an empty string to this method.
+   *
    * @param string $path
    */
   public function setSubPath($path) {
