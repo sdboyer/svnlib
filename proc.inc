@@ -18,18 +18,36 @@ interface CLIProcHandler {
   public function procOpen();
   public function procHandle();
   public function procClose();
+  public function execute();
 }
 
 interface CLIProcHandlerStdin {
-
+  public function getStdinSource();
 }
 
 interface CLIProcHandlerStdout {
+  const PARSE_OUTPUT = 0x001;
+  const PRESERVE_PARSER = 0x002;
 
+  /**
+   *
+   * @var CLIParser
+   */
+  protected $parser;
+  /**
+   *
+   * @var CLIParser
+   */
+  protected $activeParser;
+
+  public function setParser(CLIParser $parser);
+  public function getStdoutParser();
 }
 
 interface CLIProcHandlerStderr {
-
+  protected $stderr;
+  public function getStderr();
+  public function getStderrParser();
 }
 
 /**
@@ -98,7 +116,7 @@ class ProcStorage {
   }
 }
 
-abstract class ProcHandleGeneric implements CLIProcHandler {
+abstract class ProcHandlerGeneric implements CLIProcHandler {
   protected $procDescriptor = array();
   protected $procPipes = array();
   protected $process;
@@ -108,6 +126,15 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
 
   public function __construct() {
     $this->ps = ProcStorage::getInstance();
+  }
+
+  public function attachCommand(CLICommand &$command) {
+    $this->command = &$command;
+    $this->ps->attachCommand($command, $this);
+  }
+
+  public function attachConfig(CLIWrapperConfig &$config) {
+    $this->wrapper = &$config;
   }
 
   public function getProcDescriptor() {
@@ -120,7 +147,19 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
 
   public function procOpen() {
     $this->procClose();
-    $this->process = proc_open(implode(' ', $this->cmds), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
+    $this->process = proc_open($this->command->getShellString(),
+      $this->getProcDescriptor(), $this->procPipes,
+      $this->config->getWorkingPath(), NULL);
+  }
+
+  public function procHandle() {
+    $this->stderr = stream_get_contents($this->procPipes[2]);
+    if ($this->stderr) {
+      $status = proc_get_status($this->process);
+      if ($status['exitcode'] > 0) {
+        throw new Exception('svn failed with the following message: ' . $this->stderr, E_RECOVERABLE_ERROR);
+      }
+    }
   }
 
   public function procClose() {
@@ -133,37 +172,29 @@ abstract class ProcHandleGeneric implements CLIProcHandler {
     }
   }
 
-  public function attachCommand(CLICommand &$command) {
-    $this->command = &$command;
-    $this->ps->attachCommand($command, $this);
-  }
-
-  public function attachConfig(CLIWrapperConfig &$config) {
-    $this->wrapper = &$config;
+  public function execute() {
+    $this->procOpen();
+    $this->procHandle();
+    $this->procClose();
   }
 }
 
-class ProcHandleErrOnly extends ProcHandleGeneric implements CLIProcHandlerStderr {
+class ProcHandlerErrOnly extends ProcHandlerGeneric implements CLIProcHandlerStderr {
   protected $procDescriptor = array(
     2 => array('pipe', 'w'),
   );
-  protected $stdErr;
 
-  public function procHandle() {
-    $this->stdErr = stream_get_contents($this->procPipes[2]);
-  }
-
-  public function getStdErr() {
-    return $this->stdErr;
+  public function getStderr() {
+    return $this->stderr;
   }
 }
 
-class ProcHandleErrOut extends ProcHandleGeneric implements CLIProcHandlerStderr, CLIProcHandlerStdout {
-  protected $output;
+class ProcHandlerErrOut extends ProcHandlerGeneric implements CLIProcHandlerStderr, CLIProcHandlerStdout {
+  protected $stderr;
 
   public function getProcDescriptor() {
     return array(
-      1 => $this->output,
+      1 => $this->activeParser->openOutputHandle(),
       2 => array('pipe', 'w'),
     );
   }
@@ -173,18 +204,32 @@ class ProcHandleErrOut extends ProcHandleGeneric implements CLIProcHandlerStderr
     return $this->output;
   }
 
-  public function procHandle() {
-    $this->stdErr = stream_get_contents($this->procPipes[2]);
-    if ($this->stdErr) {
-      $status = proc_get_status($this->process);
-      if ($status['exitcode']) {
-        throw new Exception('svn failed with the following message: ' . $this->stdErr, E_RECOVERABLE_ERROR);
-      }
+  public function getStderr() {
+    return $this->stderr;
+  }
+
+  public function setParser(CLIParser &$parser) {
+    $this->parser = &$parser;
+  }
+
+  public function execute() {
+    if ($this->parser instanceof CLIParser) {
+      $this->activeParser = $this->parser;
     }
+    else {
+      $this->activeParser = new DummyParser();
+    }
+    parent::execute();
+    // Unlink the active parser in the symbol table. Just an object identifier
+    // if a real parser was explicitly set (which means the object itself will
+    // remain). Otherwise it's the dummy parser and this will remove the sole
+    // symbol table reference to it, thereby inducing GC on the object.
+    unset($this->activeParser);
+    return $this->ret;
   }
 }
 
-class ProcHandlerErrMulti extends ProcHandleGeneric implements CLIProcHandlerStderr {
+class ProcHandlerErrMulti extends ProcHandlerGeneric implements CLIProcHandlerStderr {
 
 }
 

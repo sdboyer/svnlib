@@ -49,16 +49,10 @@ interface CLICommand {
    * @var string
    */
   const PROC_HANDLER = NULL;
+  public function __construct(CLIWrapperConfig $config, $defaults);
   public function prepare();
   public function execute();
-  /**
-   * Returns an object implementing the CLIProcHandler interface which should be
-   * used as the default proc handler for this command - i.e., when no other
-   * proc handler is specified.
-   *
-   * @return CLIProcHandler
-   */
-  public static function getDefaultProcHandler();
+  public function attachProcHandler(CLIProcHandler $proc);
 }
 
 interface CLICommandRead {

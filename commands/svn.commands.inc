@@ -75,7 +75,7 @@ abstract class SvnCommand implements CLICommand {
 
   protected $procPipes = array();
 
-  protected $process = 0;
+  protected $proc;
 
   public $internalSwitches = 0;
   public $cmdSwitches = 0;
@@ -98,7 +98,11 @@ abstract class SvnCommand implements CLICommand {
     if ($defaults & SvnInstance::PASS_DEFAULTS) {
       // TODO not yet implemented
     }
+  }
 
+  public function attachProcHandler(CLIProcHandler $proc) {
+    $this->proc = $proc;
+    return $this;
   }
 
   protected function setSwitches() {
@@ -498,7 +502,12 @@ abstract class SvnCommand implements CLICommand {
    * @return mixed
    */
   public function execute($fluent = FALSE) {
-    return ProcStorage::getInstance()->getProcHandler($this)->execute($fluent);
+    if (!$fluent) {
+      return $this->proc->execute();
+    }
+    $this->proc->execute();
+    return $this;
+    // return ProcStorage::getInstance()->getProcHandler($this)->execute($fluent);
 
 /*    $this->procOpen();
     $this->procHandle();
@@ -574,7 +583,7 @@ abstract class SvnCommand implements CLICommand {
 abstract class SvnWrite extends SvnCommand {
 
   const OPERATES_ON_REPOSITORIES = FALSE;
-  const PROC_HANDLER = 'ProcHandleErrOnly';
+  const PROC_HANDLER = 'ProcHandlerErrOnly';
 
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
@@ -608,32 +617,17 @@ abstract class SvnRead extends SvnCommand {
   // clear flags
   const PRESERVE_PARSER = 0x008;
 
-  /**
-   *
-   * @var CLIParser
-   */
-  protected $parser;
-  /**
-   *
-   * @var CLIParser
-   */
-  protected $activeParser;
-
   protected $ret;
 
   const OPERATES_ON_REPOSITORIES = TRUE;
-  const PROC_HANDLER = 'ProcHandleErrOut';
+  const PROC_HANDLER = 'ProcHandlerErrOut';
 
-//  public function __construct(SvnCommandConfig $config, $defaults = TRUE) {
-//    parent::__construct($config, $defaults);
-//  }
-
-  protected function getProcDescriptor() {
+/*  protected function getProcDescriptor() {
     return array(
       1 => $this->activeParser->openOutputHandle(),
       2 => array('pipe', 'w'),
     );
-  }
+  }*/
 
   /**
    * Adds an operative revision to the currently queuing command. Note that
@@ -673,7 +667,7 @@ abstract class SvnRead extends SvnCommand {
     if (!$parser instanceof CLIParser) {
       if (is_null($parser)) {
         // No parser provided at all; set it to the parserClass.
-        $parser = $this->parserClass;
+        $parser = new $$this->parserClass();
       }
       elseif (!is_string($parser) || !class_exists($parser)) {
         // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
@@ -684,11 +678,9 @@ abstract class SvnRead extends SvnCommand {
       elseif (!class_exists($parser)) {
         throw new Exception("Undeclared class '$parser' provided to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
       }
-      $this->parser = new $parser();
+      $parser = new $parser();
     }
-    else {
-      $this->parser = $parser;
-    }
+    $this->proc->setParser($parser);
     return $this;
   }
 
@@ -709,8 +701,8 @@ abstract class SvnRead extends SvnCommand {
       throw new Exception("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
     }
     parent::execute(FALSE);
-    // Unlink the active parser. Just a pointer if one's been set, or kills the
-    // dummy parser.
+    // Unlink the active parser. Just an object identifier if one's been set, or
+    // will kill the dummy parser by marking it for GC.
     unset($this->activeParser);
     return $fluent ? $this : $this->ret;
   }
