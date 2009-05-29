@@ -63,7 +63,7 @@ class SvnOptRevision extends SvnOpt {
     if (!is_int($arg)) {
       // FIXME currently does not allow date-based revision range args
       if (!in_array($arg, array('HEAD', 'BASE', 'COMMITTED', 'PREV'))) {
-        throw new Exception("Invalid revision information passed as an argument to SvnOptRevision", E_RECOVERABLE_ERROR);
+        throw new InvalidArgumentException("Invalid revision information passed as an argument to SvnOptRevision", E_RECOVERABLE_ERROR);
         return FALSE;
       }
     }
@@ -93,7 +93,7 @@ class SvnOptAccept extends SvnOpt  {
 
   protected function checkArg($arg) {
     if (!in_array($arg, array('base', 'working', 'mine-full', 'theirs-full'))) {
-      throw new Exception("Invalid argument '$arg' passed to SvnOptAccept", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid argument '$arg' passed to SvnOptAccept", E_RECOVERABLE_ERROR);
       return FALSE;
     }
     return TRUE;
@@ -107,7 +107,7 @@ class SvnOptDepth extends SvnOpt {
 
   protected function checkArg($arg) {
     if (!in_array($arg, array('infinity', 'files', 'immediates', 'empty'))) {
-      throw new Exception("Invalid argument '$arg' passed to SvnOptDepth", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid argument '$arg' passed to SvnOptDepth", E_RECOVERABLE_ERROR);
       return FALSE;
     }
     return TRUE;
@@ -136,7 +136,7 @@ class SvnOptTargets extends SvnOpt {
 
   public function setTargetsFile($file) {
     if (!is_file($file)) {
-      throw new Exception('Non-file argument passed to SvnOptTargets.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException('Non-file argument passed to SvnOptTargets.', E_RECOVERABLE_ERROR);
     }
     else {
       $this->fileExternal = $file;
@@ -201,7 +201,7 @@ class SvnOptTarget extends SvnOpt {
 
   public function revision($rev) {
     if (!is_int($rev)) {
-      throw new Exception('Non-integer revision argument, "' . $rev . '" passed to SvnOptTarget.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException('Non-integer revision argument, "' . $rev . '" passed to SvnOptTarget.', E_RECOVERABLE_ERROR);
     }
     $this->rev = $rev;
     return $this;
@@ -237,7 +237,7 @@ class SvnOptConfigDir extends SvnOpt {
 
   protected function checkArg($arg) {
     if (!is_dir($arg)) {
-      throw new Exception("'" . $arg . "' is not a directory; SvnConfigdir requires a valid directory be provided.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("'" . $arg . "' is not a directory; SvnConfigdir requires a valid directory be provided.", E_RECOVERABLE_ERROR);
       return FALSE;
     }
     return TRUE;
@@ -250,7 +250,7 @@ class SvnOptExtensions extends SvnOpt {
 
   protected function checkArg($arg) {
     if (!in_array($arg, array('-u', '-b', '-w', '--ignore-eol-style', '-p'))) {
-      throw new Exception("An invalid arg, '$arg', was passed to SvnOptExtensions. Note that only the short forms of the args are permitted.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("An invalid arg, '$arg', was passed to SvnOptExtensions. Note that only the short forms of the args are permitted.", E_RECOVERABLE_ERROR);
       return FALSE;
     }
     return TRUE;
@@ -273,7 +273,7 @@ class SvnOptFile extends SvnOpt {
 
   protected function checkArg($arg) {
     if (!is_file($arg)) {
-      throw new Exception('Non-file argument passed to SvnOptFile.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException('Non-file argument passed to SvnOptFile.', E_RECOVERABLE_ERROR);
     }
   }
 }

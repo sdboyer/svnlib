@@ -123,7 +123,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     if (method_exists($this->config, $name)) {
       return call_user_func_array(array($this->config, $name), $arguments);
     }
-    throw new Exception('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
+    throw new BadMethodCallException('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
   }
 
   public function username($username) {
@@ -161,11 +161,11 @@ class SvnWorkingCopy extends SvnInstance {
 
   public function verify($path) {
     if (!is_dir($path)) {
-      throw new Exception(get_class($this) . ' requires a directory argument, but "' . $path . '" was provided.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException(get_class($this) . ' requires a directory argument, but "' . $path . '" was provided.', E_RECOVERABLE_ERROR);
     }
 
     if (!is_dir($path . DIRECTORY_SEPARATOR . '.svn')) {
-      throw new Exception($path . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException($path . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
   }
 
@@ -180,7 +180,7 @@ class SvnWorkingCopy extends SvnInstance {
   public function svn($subcommand, $defaults = self::PCUD) {
     $classname = 'svn' . $subcommand;
     if (!class_exists($classname)) {
-      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
     }
     $this->cmd = new $classname($this->config, $defaults);
 
@@ -227,7 +227,7 @@ class SvnRepository extends SvnInstance {
       system('svn info --config-dir ' . dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir ' . (string) $this, $exit);
     }
     if (!empty($exit)) {
-      throw new Exception($path . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException($path . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
 
@@ -252,14 +252,14 @@ class SvnRepository extends SvnInstance {
   public function svn($subcommand, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
     if (!class_exists($classname)) {
-      throw new Exception("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
     }
     $reflection = new ReflectionClass($classname);
     if (!$reflection->getConstant('operatesOnRepositories')) {
-      throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
     if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
-      throw new Exception("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
     }
 
     $this->cmd = new $classname($this->config, $defaults);
@@ -281,7 +281,7 @@ class SvnRepository extends SvnInstance {
   public function svnadmin($subcommand, $defaults = NULL) {
     $classname = 'Svnadmin' . $subcommand;
     if (!class_exists($classname)) {
-      throw new Exception("Invalid svnadmin subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid svnadmin subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
     }
 
     $this->cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
