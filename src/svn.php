@@ -337,7 +337,7 @@ class SvnCommandConfig {
 function svnlib_get_repository($path) {
   try {
     $repo = new SvnRepository($path);
-  } catch (Exception $e) {
+  } catch (InvalidArgumentException $e) {
     $wc = new SvnWorkingCopy($path);
     $repo = $wc->getRepository();
     unset($wc);
