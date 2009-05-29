@@ -23,8 +23,8 @@ abstract class SvnOpt implements CLICommandOpt {
   protected $arg = '';
   protected $concatenator = ' ';
 
-  public function __construct(SvnCommand $sc, $arg) {
-    $this->sc = $sc;
+  public function __construct(SvnCommand &$sc, $arg) {
+    $this->sc = &$sc;
     if (method_exists($this, 'checkArg')) {
       if ($this->checkArg($arg)) {
         $this->arg = $arg;
