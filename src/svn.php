@@ -126,21 +126,6 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     }
     throw new BadMethodCallException('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
   }
-
-  public function username($username) {
-    $this->config->username = $username;
-    return $this;
-  }
-
-  public function password($password) {
-    $this->config->password = $password ;
-    return $this;
-  }
-
-  public function configDir($path) {
-    $this->config->configDir = $path;
-    return $this;
-  }
 }
 
 /**
