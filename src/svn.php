@@ -51,7 +51,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
   }
 
   protected function getInfo() {
-    $output = $this->svn('info', self::PASS_CONFIG)->target('.')->execute();
+    $output = $this->svn('info', $proc, self::PASS_CONFIG)->target('.')->execute();
 
     preg_match('/^Repository Root: (.*)\n/m', $output, $root);
     $this->config->repoRoot = $root[1];
@@ -119,7 +119,16 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param bool $defaults
    * @return SvnCommand
    */
-  abstract public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD);
+  abstract public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD);
+
+  protected function buildCommand($classname, &$proc) {
+    if (!class_exists($classname)) {
+      throw new InvalidArgumentException("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+    }
+    $reflection = new ReflectionClass($classname);
+    $this->getProcHandler($reflection, $proc);
+    return $reflection;
+  }
 
   /**
    * Kind of a silly little helper function. Verifies the requested command
@@ -130,30 +139,28 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param string $classname
    * @return void
    */
-  protected function &getProcHandler($classname, &$proc) {
-    if (!class_exists($classname)) {
-      throw new Exception("Invalid subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
-    }
-
-    $this->reflection = new ReflectionClass($classname);
+  protected function getProcHandler($reflection, &$proc) {
     if (is_null($proc)) {
       // If no proc handler was explicitly specified, then first try the global
-      // proc handler specified on this CLIWrapper (if any).
+      // proc handler specified on this CLIWrapper's config object (if any).
       if (!empty($this->config->proc) && $this->config->proc instanceof CLIProcHandler) {
         $proc = &$this->config->proc;
       }
+      // Lowest priority (and most common) case: no global proc handler
+      // specified on this CLIWrapperConfig object; use the default specified by
+      // the command. This is the most common case.
       else {
-        // Lowest priority (and most common) case: no global proc handler
-        // specified on this CLIWrapper object; use the default specified by the
-        // command. This is the most common case.
-        $proc_class = $this->reflection->getConstant('PROC_HANDLER');
+        $proc_class = $reflection->getConstant('PROC_HANDLER');
         if (!class_exists($proc_class)) {
           throw new InvalidArgumentException("The requested command specified an unknown class, '$proc_class', as the default process handler", E_RECOVERABLE_ERROR);
         }
         $proc = new $proc_class();
+        $proc->attachConfig($this->config);
       }
     }
-    $proc->attachConfig($this->config);
+    if (!$proc instanceof CLIProcHandler) {
+      throw new LogicException("Svnlib was unable to create a process handler.", E_RECOVERABLE_ERROR);
+    }
   }
 
   public function __call($name, $arguments) {
@@ -197,11 +204,12 @@ class SvnWorkingCopy extends SvnInstance {
 
   public function getPrependPath() {}
 
-  public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
+  public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD) {
     $classname = 'svn' . $subcommand;
-    $this->getProcHandler($classname, $proc);
+    $reflection = $this->buildCommand($classname, $proc);
     $cmd = new $classname($this->config, $defaults);
     $proc->attachCommand($cmd);
+    $cmd->attachProcHandler($proc);
     return $cmd;
   }
 }
@@ -265,19 +273,19 @@ class SvnRepository extends SvnInstance {
 
   public function getWorkingPath() {}
 
-  public function svn($subcommand, CLIProcHandler $proc = NULL, $defaults = self::PCUD) {
+  public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
-    $proc = &$this->getProcHandler($classname, $proc);
-
+    $this->buildCommand($classname, $proc);
     if (!$this->reflection->getConstant('operatesOnRepositories')) {
-      throw new Exception('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
     if ($$this->reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
-      throw new Exception("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
     }
 
     $cmd = new $classname($this->config, $defaults);
     $proc->attachCommand($cmd);
+    $cmd->attachProcHandler($proc);
     return $cmd;
   }
 
@@ -288,7 +296,7 @@ class SvnRepository extends SvnInstance {
    * @return bool
    */
   public function isWritable() {
-    // TODO write capable just gets us in the door, we then need to run
+    // TODO WRITE_CAPABLE just gets us in the door, we then need to run
     // more checks
     return self::$protocols[$this->protocol] & self::WRITE_CAPABLE;
   }

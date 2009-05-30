@@ -620,7 +620,6 @@ abstract class SvnRead extends SvnCommand {
   protected $ret;
 
   const OPERATES_ON_REPOSITORIES = TRUE;
-  const PROC_HANDLER = 'ProcHandlerErrOut';
 
   protected function getProcDescriptor() {
     return array(
@@ -684,7 +683,7 @@ abstract class SvnRead extends SvnCommand {
     return $this;
   }
 
-  public function execute($fluent = FALSE) {
+/*  public function execute($fluent = FALSE) {
     // If we're set to parse output, use the currently set parser; otherwise,
     if ($this->internalSwitches & self::PARSE_OUTPUT) {
       if (!$this->parser instanceof CLIParser) {
@@ -705,7 +704,7 @@ abstract class SvnRead extends SvnCommand {
     // will kill the dummy parser by marking it for GC.
     unset($this->activeParser);
     return $fluent ? $this : $this->ret;
-  }
+  }*/
 
   protected function procOpen() {
     $this->procClose();

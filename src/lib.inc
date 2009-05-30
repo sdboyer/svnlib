@@ -48,7 +48,7 @@ interface CLICommand {
    *
    * @var string
    */
-  const PROC_HANDLER = NULL;
+  const PROC_HANDLER = 'CLIProcHandlerSingle';
   public function __construct(CLIWrapperConfig $config, $defaults);
   public function prepare();
   public function execute();
@@ -75,10 +75,6 @@ interface CLIIOHandler {
 }
 
 interface CLIParser extends CLIIOHandler {
-  /**
-   * @return Resource
-   */
-  public function openOutputHandle();
   public function parseOutput();
 }
 

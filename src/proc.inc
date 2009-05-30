@@ -114,10 +114,10 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
   protected $config;
   protected $io = array();
   protected $activeIo = array();
+  public $env;
+  protected $ret = array();
 
-  public function __construct() {
-
-  }
+  public function __construct() {}
 
   public function attachCommand(CLICommand &$command) {
     $this->command = &$command;
@@ -125,7 +125,7 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
   }
 
   public function attachConfig(CLIWrapperConfig &$config) {
-    $this->wrapper = &$config;
+    $this->config = &$config;
   }
 
 /*  public function getProcDescriptor() {
@@ -144,10 +144,13 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
     $this->procClose();
     $this->process = proc_open($this->command->getShellString(),
       $this->getProcDescriptor(), $this->procPipes,
-      $this->config->getWorkingPath(), NULL);
+      $this->config->getWorkingPath(), $this->env);
   }
 
   public function procHandle() {
+    foreach ($this->io as $fd => $io) {
+      $this->ret[$fd] = $io;
+    }
     $this->stderr = stream_get_contents($this->procPipes[2]);
     if ($this->stderr) {
       $status = proc_get_status($this->process);

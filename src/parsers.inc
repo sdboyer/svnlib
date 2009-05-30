@@ -18,10 +18,6 @@ class PassthruParser implements CLIParser {
   protected $output;
 
   public function __construct() {}
-  public function openOutputHandle() {
-    $this->output = fopen('php://temp', 'rw');
-    return $this->output;
-  }
 
   public function parseOutput() {
     rewind($this->output);
@@ -37,7 +33,8 @@ class PassthruParser implements CLIParser {
   }
 
   public function getProcDescriptor() {
-    return array('file', 'w');
+    $this->output = fopen('php://temp', 'rw');
+    return $this->output;
   }
 }
 
@@ -72,7 +69,7 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
     return $this->parse($this->getInnerIterator()->current());
   }
 
-  public function openOutputHandle() {
+  public function getProcDescriptor() {
     $this->output = fopen('php://temp', 'rw');
     return $this->output;
   }
@@ -85,10 +82,6 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
     if (is_resource($this->output)) {
       fclose($this->output);
     }
-  }
-
-  public function getProcDescriptor() {
-    return array('file', 'w');
   }
 
   public function clear() {}
