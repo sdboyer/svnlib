@@ -68,28 +68,46 @@ interface CLICommandOpt {
   public function getShellString();
 }
 
-interface CLIParser {
+interface CLIIOHandler {
+  public function procClose($destruct = FALSE);
+  public function clear();
+  public function getProcDescriptor();
+}
+
+interface CLIParser extends CLIIOHandler {
   /**
    * @return Resource
    */
   public function openOutputHandle();
   public function parseOutput();
-  public function procClose($destruct = FALSE);
-  public function clear();
 }
 
-interface CLIParserPipe extends CLIParser {
+class CLIPipe implements CLIIOHandler {
 
-}
+  protected $pipe;
+  protected $outCommand, $inCommand;
 
-interface CLIParserResource extends CLIParser {
+  public function in(&$alias, CLICommand &$inCommand) {
+    $this->inCommand = &$inCommand;
+    $this->pipe = &$alias;
+  }
 
-}
+  public function &out(CLICommand &$outCommand) {
+    $this->outCommand = &$outCommand;
+    return $this->pipe;
+  }
 
-interface CLIPipeStdIn {
+  public function getProcDescriptor() {
 
-}
+  }
 
-interface CLIPipeStdOut {
+  public function procClose($destruct = FALSE) {
+    if (is_resource($this->pipe)) {
+      fclose($this->pipe);
+    }
+  }
 
+  public function clear() {
+
+  }
 }

@@ -11,8 +11,9 @@
  */
 
 interface CLIProcHandler {
-  public function attachCommand(CLICommand $command);
-  public function attachConfig(CLIWrapperConfig $config);
+  public function attachCommand(CLICommand &$command);
+  public function attachIOHandler(CLIIOHandler &$parser, int $descriptor);
+  public function attachConfig(CLIWrapperConfig &$config);
   public function getProcDescriptor();
   public function &getProcPipes();
   public function procOpen();
@@ -29,23 +30,11 @@ interface CLIProcHandlerStdout {
   const PARSE_OUTPUT = 0x001;
   const PRESERVE_PARSER = 0x002;
 
-  /**
-   *
-   * @var CLIParser
-   */
-  protected $parser;
-  /**
-   *
-   * @var CLIParser
-   */
-  protected $activeParser;
-
-  public function setParser(CLIParser $parser);
+  public function setParser(CLIParser &$parser);
   public function getStdoutParser();
 }
 
 interface CLIProcHandlerStderr {
-  protected $stderr;
   public function getStderr();
   public function getStderrParser();
 }
@@ -121,24 +110,30 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
   protected $procPipes = array();
   protected $process;
   protected $command;
-  protected $ps;
+  // protected $ps;
   protected $config;
+  protected $io = array();
+  protected $activeIo = array();
 
   public function __construct() {
-    $this->ps = ProcStorage::getInstance();
+
   }
 
   public function attachCommand(CLICommand &$command) {
     $this->command = &$command;
-    $this->ps->attachCommand($command, $this);
+    // $this->ps->attachCommand($command, $this);
   }
 
   public function attachConfig(CLIWrapperConfig &$config) {
     $this->wrapper = &$config;
   }
 
-  public function getProcDescriptor() {
+/*  public function getProcDescriptor() {
     return $this->procDescriptor;
+  }*/
+
+  public function attachIOHandler(CLIIOHandler &$io, int $descriptor) {
+    $this->io[$descriptor] = &$io;
   }
 
   public function &getProcPipes() {
@@ -179,13 +174,44 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
   }
 }
 
-class ProcHandlerErrOnly extends ProcHandlerGeneric implements CLIProcHandlerStderr {
+class CLIProcHandlerSingle extends ProcHandlerGeneric {
+
+  public function __construct() {
+    $this->io = array(
+      1 => new PassthruParser(),
+      2 => new PassthruParser(),
+    );
+  }
+
+  public function getProcDescriptor() {
+    $descriptor = array();
+    foreach ($this->io as $fd => $handler) {
+      $descriptor[$fd] = $handler->getProcDescriptor();
+    }
+    return $descriptor;
+  }
+}
+
+/*class CLIProcHandlerDouble extends ProcHandlerGeneric {
+
+}*/
+
+/*class CLIProcHandlerMulti extends ProcHandlerGeneric {
+
+}*/
+
+
+/*class ProcHandlerErrOnly extends ProcHandlerGeneric implements CLIProcHandlerStderr {
   protected $procDescriptor = array(
     2 => array('pipe', 'w'),
   );
 
   public function getStderr() {
     return $this->stderr;
+  }
+
+  public function getStderrParser() {
+
   }
 }
 
@@ -233,3 +259,4 @@ class ProcHandlerErrMulti extends ProcHandlerGeneric implements CLIProcHandlerSt
 
 }
 
+*/

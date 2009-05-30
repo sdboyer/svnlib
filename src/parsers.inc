@@ -35,6 +35,10 @@ class PassthruParser implements CLIParser {
       fclose($this->output);
     }
   }
+
+  public function getProcDescriptor() {
+    return array('file', 'w');
+  }
 }
 
 /**
@@ -81,6 +85,10 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
     if (is_resource($this->output)) {
       fclose($this->output);
     }
+  }
+
+  public function getProcDescriptor() {
+    return array('file', 'w');
   }
 
   public function clear() {}

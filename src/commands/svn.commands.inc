@@ -81,7 +81,7 @@ abstract class SvnCommand implements CLICommand {
   public $cmdSwitches = 0;
   protected $cmdOpts = array();
 
-  public function __construct(SvnCommandConfig $config, $defaults) {
+  public function __construct(CLIWrapperConfig $config, $defaults) {
     $this->config = $config;
 
     // Set up the cmdSwitches array for use.
@@ -622,12 +622,12 @@ abstract class SvnRead extends SvnCommand {
   const OPERATES_ON_REPOSITORIES = TRUE;
   const PROC_HANDLER = 'ProcHandlerErrOut';
 
-/*  protected function getProcDescriptor() {
+  protected function getProcDescriptor() {
     return array(
       1 => $this->activeParser->openOutputHandle(),
       2 => array('pipe', 'w'),
     );
-  }*/
+  }
 
   /**
    * Adds an operative revision to the currently queuing command. Note that
@@ -680,7 +680,7 @@ abstract class SvnRead extends SvnCommand {
       }
       $parser = new $parser();
     }
-    $this->proc->setParser($parser);
+    $this->proc->attachIOHandler($parser, 1);
     return $this;
   }
 

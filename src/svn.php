@@ -2,7 +2,7 @@
 
 // TODO temporary straight includes until a smarter system is introduced
 require_once dirname(__FILE__) . '/lib.inc';
-require_once dirname(__FILE__) . 'proc.inc';
+require_once dirname(__FILE__) . '/proc.inc';
 require_once dirname(__FILE__) . '/parsers.inc';
 require_once dirname(__FILE__) . '/commands/svn.commands.inc';
 require_once dirname(__FILE__) . '/opts/svn.opts.inc';
@@ -148,7 +148,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
         // command. This is the most common case.
         $proc_class = $this->reflection->getConstant('PROC_HANDLER');
         if (!class_exists($proc_class)) {
-          throw new Exception("The requested command specified an unknown class, '$proc_class', as the default process handler", E_RECOVERABLE_ERROR);
+          throw new InvalidArgumentException("The requested command specified an unknown class, '$proc_class', as the default process handler", E_RECOVERABLE_ERROR);
         }
         $proc = new $proc_class();
       }
