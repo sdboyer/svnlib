@@ -1,33 +1,36 @@
 <?php
 require_once 'PHPUnit/Framework.php';
-require_once '../src/svn.php';
+require_once SVNLIB_SRC . '/svn.php';
 
-abstract class SvnCommandInitTest extends PHPUnit_Framework_TestCase {
+class SvnCommandInitTest extends PHPUnit_Framework_TestCase {
 
   public function setUp() {
-    $this->config = new SvnCommandConfig();
+    $this->wcConfig = new SvnCommandConfig();
+    $this->repoConfig = new SvnCommandConfig();
+    $this->wc = new SvnWorkingCopy(getcwd() . '/wc', $this->wcConfig);
+    $this->repo = new SvnRepository('file://' . getcwd() . '/repo', $this->repoConfig);
+    $this->instance = &$this->wc;
+    $this->config = &$this->wcConfig;
   }
 
   /**
    * @expectedException InvalidArgumentException
    */
   public function testBadCommand() {
-    new SvnWorkingCopy('./foo');
+    $this->instance->svn('hooba');
   }
 }
 
-class SvnWorkingCopyTest extends SvnInstanceTest {
+abstract class SvnCommandTest extends PHPUnit_Framework_TestCase {
+
+  public static $comamnd;
 
   public function setUp() {
-    parent::setUp();
-    $this->instance = new SvnWorkingCopy(getcwd() . '/wc', $this->config);
-  }
-}
-
-class SvnRepositoryTest extends SvnInstanceTest {
-
-  public function setUp() {
-    parent::setUp();
-    $this->instance = new SvnRepository('file://' . getcwd() . '/repo', $this->config);
+    $this->wcConfig = new SvnCommandConfig();
+    $this->repoConfig = new SvnCommandConfig();
+    $this->wc = new SvnWorkingCopy(getcwd() . '/wc', $this->wcConfig);
+    $this->repo = new SvnRepository('file://' . getcwd() . '/repo', $this->repoConfig);
+    $this->instance = &$this->wc;
+    $this->config = &$this->wcConfig;
   }
 }

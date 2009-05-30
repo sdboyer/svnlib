@@ -1,6 +1,6 @@
 <?php
 require_once 'PHPUnit/Framework.php';
-require_once '../src/svn.php';
+require_once SVNLIB_SRC . '/svn.php';
 
 class SvnWorkingCopyInitTest extends PHPUnit_Framework_TestCase {
   /**

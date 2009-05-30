@@ -23,4 +23,4 @@ if [ ! -d "$root/wc" ]; then
   svn co file://$root/repo wc
 fi
 
-phpunit $root/tests
+php -d safe_mode=Off phpunit.php -- $root/tests
