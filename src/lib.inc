@@ -76,6 +76,7 @@ interface CLIIOHandler {
 
 interface CLIParser extends CLIIOHandler {
   public function parseOutput();
+  // public function __toString();
 }
 
 class CLIPipe implements CLIIOHandler {

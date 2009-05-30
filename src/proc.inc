@@ -128,9 +128,13 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
     $this->config = &$config;
   }
 
-/*  public function getProcDescriptor() {
-    return $this->procDescriptor;
-  }*/
+  public function getProcDescriptor() {
+    $descriptor = array();
+    foreach ($this->io as $fd => $handler) {
+      $descriptor[$fd] = $handler->getProcDescriptor();
+    }
+    return $descriptor;
+  }
 
   public function attachIOHandler(CLIIOHandler &$io, int $descriptor) {
     $this->io[$descriptor] = &$io;
@@ -149,31 +153,39 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
   public function procHandle() {
     foreach ($this->io as $fd => $io) {
-      $this->ret[$fd] = $io;
-    }
-    $this->stderr = stream_get_contents($this->procPipes[2]);
-    if ($this->stderr) {
-      $status = proc_get_status($this->process);
-      if ($status['exitcode'] > 0) {
-        throw new Exception('svn failed with the following message: ' . $this->stderr, E_RECOVERABLE_ERROR);
-      }
+      $this->ret[$fd] = $io->procHandle($this);
     }
   }
 
   public function procClose() {
-    if (is_resource($this->process)) {
-      foreach ($this->procPipes as $pipe) {
-        fclose($pipe);
+    if (!is_resource($this->process)) {
+      return;
+    }
+
+    foreach ($this->io as $fd => &$io) {
+      $io->procClose();
+      if (isset($this->procPipes[$fd]) && is_resource($this->procPipes[$fd])) {
+        fclose($this->procPipes[$fd]);
       }
-      $this->procPipes = array();
-      $this->process = proc_close($this->process);
+    }
+    // $this->procPipes = array();
+
+    $exit = proc_close($this->process);
+    if ($exit !== 0) {
+      $text = "Invocation of command '{$this->command->getShellString()}' failed with exit code $exit";
+      // if ($this->io[2] instanceof CLIIOHandler && $stderr = (string) $this->io[2]) {
+      if (!empty($this->ret[2])) {
+        $text .= " and the following stderr output: '{$this->ret[2]}'";
+      }
+      throw new RuntimeException($text, E_RECOVERABLE_ERROR);
     }
   }
 
-  public function execute() {
+  public function execute($fds = array()) {
     $this->procOpen();
     $this->procHandle();
     $this->procClose();
+    return empty($fds) ? $this->ret : array_intersect_keys($this->ret, array_flip($fds));
   }
 }
 
@@ -184,14 +196,6 @@ class CLIProcHandlerSingle extends ProcHandlerGeneric {
       1 => new PassthruParser(),
       2 => new PassthruParser(),
     );
-  }
-
-  public function getProcDescriptor() {
-    $descriptor = array();
-    foreach ($this->io as $fd => $handler) {
-      $descriptor[$fd] = $handler->getProcDescriptor();
-    }
-    return $descriptor;
   }
 }
 

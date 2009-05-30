@@ -24,6 +24,10 @@ class PassthruParser implements CLIParser {
     return stream_get_contents($this->output);
   }
 
+  public function procHandle() {
+    return $this->parseOutput();
+  }
+
   public function clear() {}
 
   public function procClose($destruct = FALSE) {

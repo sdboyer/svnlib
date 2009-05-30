@@ -42,23 +42,18 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     $this->config = is_null($config) ? new SvnCommandConfig() : $config;
     $this->config->attachWrapper($this);
 
-    // Because it's very easy for the svnlib to fail (hard and with weird errors)
-    // if a config dir isn't present, we set it to the unintrusive default that
-    // ships with svnlib.
-    $this->config->configDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir';
-
     $this->getInfo();
   }
 
   protected function getInfo() {
     $output = $this->svn('info', $proc, self::PASS_CONFIG)->target('.')->execute();
 
-    preg_match('/^Repository Root: (.*)\n/m', $output, $root);
+    preg_match('/^Repository Root: (.*)\n/m', $output[1], $root);
     $this->config->repoRoot = $root[1];
-    preg_match('/^Revision: (.*)\n/m', $output, $rev);
+    preg_match('/^Revision: (.*)\n/m', $output[1], $rev);
     $this->config->latestRev = (int) $rev[1];
 
-    preg_match('/^URL: (.*)\n/m', $output, $url);
+    preg_match('/^URL: (.*)\n/m', $output[1], $url);
     if ($url[1] != $this->config->repoRoot) {
       // Do this with a separate $subpath variable to ensure we don't get any
       // icky trailing slashes messing it up.
@@ -275,11 +270,11 @@ class SvnRepository extends SvnInstance {
 
   public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
-    $this->buildCommand($classname, $proc);
-    if (!$this->reflection->getConstant('operatesOnRepositories')) {
+    $reflection = $this->buildCommand($classname, $proc);
+    if (!$reflection->getConstant('operatesOnRepositories')) {
       throw new InvalidArgumentException('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
-    if ($$this->reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
+    if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
       throw new InvalidArgumentException("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
     }
 
@@ -326,7 +321,12 @@ class SvnCommandConfig implements CLIWrapperConfig {
   public $protocol;
   public $path;
 
-  public function __construct() {}
+  public function __construct() {
+    // Because it's very easy for the svnlib to fail (hard and with weird errors)
+    // if a config dir isn't present, we set it to the unintrusive default that
+    // ships with svnlib.
+    $this->configDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir';
+  }
 
   public function attachWrapper(CLIWrapper $wrapper) {
     $this->instance = $wrapper;
