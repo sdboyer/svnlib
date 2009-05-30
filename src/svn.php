@@ -65,7 +65,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
       $subpath = substr($url[1], strlen($this->config->repoRoot));
       $this->setSubPath($subpath);
       // Need to re-call the SplFileInfo constructor to point to the real root
-      parent::__construct(substr($this, 0, strlen($subpath)));
+      parent::__construct(substr($this, 0, -strlen($subpath)));
     }
   }
 
@@ -92,6 +92,8 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * the subpath while in the midst of queuing up a command. This internal
    * behavior is also different for repositories than it is for working copies.
    *
+   * To reset the current subpath, simply pass an empty string to this method.
+   *
    * @param string $path
    */
   public function setSubPath($path) {
@@ -104,8 +106,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
    * @param string $path
    */
   public function appendSubPath($path) {
-    // FIXME stupid dir separator, when to add it?
-    $this->config->subPath .= DIRECTORY_SEPARATOR . trim($path, '/');
+    $this->config->subPath .= (empty($this->config->subPath) ? '' : DIRECTORY_SEPARATOR) . trim($path, '/');
   }
 
   abstract public function verify($path);
@@ -159,22 +160,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
     if (method_exists($this->config, $name)) {
       return call_user_func_array(array($this->config, $name), $arguments);
     }
-    throw new Exception('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
-  }
-
-  public function username($username) {
-    $this->config->username = $username;
-    return $this;
-  }
-
-  public function password($password) {
-    $this->config->password = $password ;
-    return $this;
-  }
-
-  public function configDir($path) {
-    $this->config->configDir = $path;
-    return $this;
+    throw new BadMethodCallException('Method ' . $name . ' is unknown.', E_RECOVERABLE_ERROR);
   }
 }
 
@@ -197,11 +183,11 @@ class SvnWorkingCopy extends SvnInstance {
 
   public function verify($path) {
     if (!is_dir($path)) {
-      throw new Exception(get_class($this) . ' requires a directory argument, but "' . $path . '" was provided.', E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException(get_class($this) . ' requires a directory argument, but "' . $path . '" was provided.', E_RECOVERABLE_ERROR);
     }
 
     if (!is_dir($path . DIRECTORY_SEPARATOR . '.svn')) {
-      throw new Exception($path . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException($path . " contains no svn metadata; it is not a working copy directory.", E_RECOVERABLE_ERROR);
     }
   }
 
@@ -259,7 +245,7 @@ class SvnRepository extends SvnInstance {
       system('svn info --config-dir ' . dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir ' . (string) $this, $exit);
     }
     if (!empty($exit)) {
-      throw new Exception($path . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException($path . " is not a valid Subversion repository.", E_RECOVERABLE_ERROR);
     }
   }
 
@@ -369,7 +355,7 @@ class SvnCommandConfig implements CLIWrapperConfig {
 function svnlib_get_repository($path) {
   try {
     $repo = new SvnRepository($path);
-  } catch (Exception $e) {
+  } catch (InvalidArgumentException $e) {
     $wc = new SvnWorkingCopy($path);
     $repo = $wc->getRepository();
     unset($wc);

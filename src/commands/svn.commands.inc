@@ -71,7 +71,7 @@ abstract class SvnCommand implements CLICommand {
    *
    * @var SvnCommandConfig
    */
-  protected $config;
+  public $config;
 
   protected $procPipes = array();
 
@@ -177,10 +177,10 @@ abstract class SvnCommand implements CLICommand {
     if ($stderr = stream_get_contents($this->procPipes[2])) {
       $status = proc_get_status($this->process);
       if ($status['exitcode']) {
-        throw new Exception('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
+        throw new RuntimeException('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
       }
       else {
-        throw new Exception('The ' . get_class($this) . ' command completed successfully, but threw the following error(s) during execution: ' . $stderr, E_NOTICE);
+        throw new RuntimeException('The ' . get_class($this) . ' command completed successfully, but threw the following error(s) during execution: ' . $stderr, E_NOTICE);
       }
     }
   }
@@ -673,10 +673,10 @@ abstract class SvnRead extends SvnCommand {
         // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
         // will always output 'SvnRead'. Keeping it in anyway, in anticipation.
         // UPDATE: Trying it with just get_class()
-        throw new Exception("Unsupported operand type passed to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
+        throw new UnexpectedValueException("Unsupported operand type passed to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
       }
       elseif (!class_exists($parser)) {
-        throw new Exception("Undeclared class '$parser' provided to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
+        throw new InvalidArgumentException("Undeclared class '$parser' provided to " . get_class($this) . "::setParser.", E_RECOVERABLE_ERROR);
       }
       $parser = new $parser();
     }
@@ -688,7 +688,7 @@ abstract class SvnRead extends SvnCommand {
     // If we're set to parse output, use the currently set parser; otherwise,
     if ($this->internalSwitches & self::PARSE_OUTPUT) {
       if (!$this->parser instanceof CLIParser) {
-        throw new Exception("Output parsing requested, but no output parser was set.", E_ERROR);
+        throw new RuntimeException("Output parsing requested, but no output parser was set.", E_ERROR);
       }
       // other, more forgiving approach
       // if (!$this->parser instanceof CLIParser) { $this->setParser(); }
@@ -698,7 +698,7 @@ abstract class SvnRead extends SvnCommand {
       $this->activeParser = new DummyParser();
     }
     else {
-      throw new Exception("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
+      throw new UnexpectedValueException("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
     }
     parent::execute(FALSE);
     // Unlink the active parser. Just an object identifier if one's been set, or
@@ -809,7 +809,7 @@ class SvnInfo extends SvnRead {
 
   public function revision($rev1, $rev2 = NULL) {
     if (!is_null($rev2)) {
-      throw new Exception('`svn info` can take only a single revision argument, not a revision range. The second argument will be ignored.', E_WARNING);
+      throw new InvalidArgumentException('`svn info` can take only a single revision argument, not a revision range. The second argument will be ignored.', E_WARNING);
     }
     $this->cmdOpts[self::REVISION] = new SvnOptRevision($this, $rev1);
     return $this;

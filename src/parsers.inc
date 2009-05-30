@@ -118,7 +118,7 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
     elseif (isset($args['rev']) xor isset($args['path'])) {
       return isset($args['rev']) ? $this->seekRev($args['rev']) : $this->seekPath($args['path']);
     }
-    throw new Exception('No arguments provided for xpath query.', E_RECOVERABLE_ERROR);
+    throw new InvalidArgumentException('No arguments provided for xpath query.', E_RECOVERABLE_ERROR);
   }
 
   public function seekRev($rev) {
@@ -191,7 +191,7 @@ class SvnLogXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
           // $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and @copyfrom-path != '$path[path]' and starts-with('$path[path]',.)]");
           $parents = $rev->xpath("paths/path[@action = 'A' and @copyfrom-rev and starts-with('$path[path]',.)]");
           if (count($parents) > 1) {
-            throw new Exception("Multiple possible copy+delete parents found for $path[path]@$revision[rev]; cannot currently handle this.", E_ERROR);
+            throw new UnexpectedValueException("Multiple possible copy+delete parents found for $path[path]@$revision[rev]; cannot currently handle this.", E_ERROR);
           }
           else {
             $add_path = array_shift($parents);
@@ -205,7 +205,7 @@ class SvnLogXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
               );
             }
             else {
-              throw new Exception('Blargh', E_ERROR);
+              throw new RuntimeException('Blargh', E_ERROR);
             }
           }
         }
