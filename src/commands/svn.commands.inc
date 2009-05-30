@@ -694,8 +694,8 @@ abstract class SvnRead extends SvnCommand {
       // if (!$this->parser instanceof CLIParser) { $this->setParser(); }
       $this->activeParser = $this->parser;
     }
-    elseif (!$this->activeParser instanceof DummyParser) {
-      $this->activeParser = new DummyParser();
+    elseif (!$this->activeParser instanceof PassthruParser) {
+      $this->activeParser = new PassthruParser();
     }
     else {
       throw new UnexpectedValueException("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);

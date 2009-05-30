@@ -217,12 +217,12 @@ class ProcHandlerErrOut extends ProcHandlerGeneric implements CLIProcHandlerStde
       $this->activeParser = $this->parser;
     }
     else {
-      $this->activeParser = new DummyParser();
+      $this->activeParser = new PassthruParser();
     }
     parent::execute();
     // Unlink the active parser in the symbol table. Just an object identifier
     // if a real parser was explicitly set (which means the object itself will
-    // remain). Otherwise it's the dummy parser and this will remove the sole
+    // remain). Otherwise it's the passthru parser and this will remove the sole
     // symbol table reference to it, thereby inducing GC on the object.
     unset($this->activeParser);
     return $this->ret;

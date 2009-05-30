@@ -14,7 +14,7 @@ define('SVNLIB_LIBXML_FLAGS', LIBXML_VERSION >= 20621 ? LIBXML_COMPACT | LIBXML_
  * any modification, but still implements the CLIParser interface so as to
  * reduce complexity in CLICommand implementations.
  */
-class DummyParser implements CLIParser {
+class PassthruParser implements CLIParser {
   protected $output;
 
   public function __construct() {}
