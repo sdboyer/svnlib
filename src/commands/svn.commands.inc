@@ -575,7 +575,7 @@ abstract class SvnCommand implements CLICommand {
   }
 
   public function __destruct() {
-    $this->procClose(TRUE);
+    $this->proc->procClose();
   }
 }
 
