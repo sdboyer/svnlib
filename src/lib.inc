@@ -36,7 +36,7 @@ interface CLIWrapper {
 interface CLIWrapperConfig {
   public function getWorkingPath();
   public function getPrependPath();
-  public function attachWrapper(CLIWrapper $wrapper);
+  public function attachWrapper(CLIWrapper &$wrapper);
 }
 
 interface CLICommand {

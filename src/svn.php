@@ -328,8 +328,8 @@ class SvnCommandConfig implements CLIWrapperConfig {
     $this->configDir = dirname(__FILE__) . DIRECTORY_SEPARATOR . 'configdir';
   }
 
-  public function attachWrapper(CLIWrapper $wrapper) {
-    $this->instance = $wrapper;
+  public function attachWrapper(CLIWrapper &$wrapper) {
+    $this->instance = &$wrapper;
   }
 
   public function username($username) {
