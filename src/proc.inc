@@ -12,7 +12,8 @@
 
 interface CLIProcHandler {
   public function attachCommand(CLICommand &$command);
-  public function attachIOHandler(CLIIOHandler &$parser, int $descriptor);
+  public function attachInputHandler(ProcInputHandler &$io, $descriptor = 0);
+  public function attachOutputHandler(ProcOutputHandler &$io, $descriptor = 1);
   public function attachConfig(CLIWrapperConfig &$config);
   public function getProcDescriptor();
   public function &getProcPipes();
@@ -22,21 +23,110 @@ interface CLIProcHandler {
   public function execute();
 }
 
-interface CLIProcHandlerStdin {
-  public function getStdinSource();
+interface ProcIO {
+  // public function __construct(&$pipe);
+  public function procHandle();
+  public function procClose();
 }
 
-interface CLIProcHandlerStdout {
-  const PARSE_OUTPUT = 0x001;
-  const PRESERVE_PARSER = 0x002;
-
-  public function setParser(CLIParser &$parser);
-  public function getStdoutParser();
+/**
+ * These go on stdin, and/or some other nonstandard file descriptor.
+ */
+interface ProcInputHandler {
+  // public function __construct(ProcIO $io);
+  public function getInputDescriptor();
+  // public function getInput();
 }
 
-interface CLIProcHandlerStderr {
-  public function getStderr();
-  public function getStderrParser();
+/**
+ * These go on stdout and stderr, and/or some other nonstandard file descriptor.
+ */
+interface ProcOutputHandler {
+  // public function __construct(ProcIO $io);
+  public function getOutputDescriptor();
+  // public function getOutput();
+}
+
+interface ProcPipe {
+  public function &connectOut();
+  public function connectIn(&$pipe);
+}
+
+interface CLIParser extends ProcIO {
+  public function parseOutput();
+  // public function __toString();
+}
+
+/*class ProcIOPipe implements ProcIO {
+
+  protected $pipe;
+
+  public function __construct(&$pipe) {
+    $this->pipe = &$pipe;
+  }
+
+  public function getProcDescriptor() {
+
+  }
+
+  public function procClose($destruct = FALSE) {
+    if (is_resource($this->pipe)) {
+      fclose($this->pipe);
+    }
+  }
+}*/
+
+class ProcIOPipe implements ProcPipe, ProcInputHandler, ProcOutputHandler {
+  protected $outConnected = FALSE;
+  protected $pipe;
+/*  public function __construct(ProcIO &$io) {
+    $this->io = &$io;
+  }*/
+  public function procHandle() {
+    if (!$this->outConnected) return stream_get_contents($this->pipe);
+  }
+
+  public function getOutputDescriptor() {
+    return array('pipe', 'w');
+  }
+
+  public function getInputDescriptor() {
+    return array('pipe', 'r');
+  }
+
+  public function &connectOut() {
+    $this->outConnected = TRUE;
+    return $this->pipe;
+  }
+
+  public function connectIn(&$pipe) {
+    $this->pipe = $pipe;
+  }
+
+  public function procClose() {
+    // do nothing, should always be handled by the connected proc objects
+  }
+}
+
+class ProcIOFileTemp implements ProcOutputHandler {
+  protected $output;
+  // public function __construct(&$pipe) {}
+
+  public function getOutputDescriptor() {
+    $this->output = fopen('php://temp', 'rw');
+    return $this->output;
+  }
+
+  public function procHandle() {
+    rewind($this->output);
+    return stream_get_contents($this->output);
+  }
+
+  public function procClose($destruct = FALSE) {
+    if (is_resource($this->output)) {
+      fclose($this->output);
+    }
+  }
 }
 
 /**
@@ -62,7 +152,7 @@ interface CLIProcHandlerStderr {
  * @author sdboyer
  *
  */
-class ProcStorage {
+/*class ProcStorage {
   protected static $instance;
 
   protected $storage;
@@ -71,13 +161,6 @@ class ProcStorage {
 		$this->storage = new SplObjectMap();
 	}
 
-	/**
-	 * Attach a command and its managing proc handler to the storage object.
-	 *
-	 * @param CLICommand $command
-	 * @param CLIProcHandler $handler
-	 * @return void
-	 */
 	public function attachCommand(CLICommand $command, CLIProcHandler $handler) {
 	  if (isset($this->storage[$command])) {
 	    throw new Exception("Attempted to assign a command to a proc handler, but that command already has a proc handler.", E_RECOVERABLE_ERROR);
@@ -103,24 +186,27 @@ class ProcStorage {
     }
     return self::$instance;
   }
-}
+}*/
 
 abstract class ProcHandlerGeneric implements CLIProcHandler {
-  protected $procDescriptor = array();
-  protected $procPipes = array();
+  protected $pipes = array();
   protected $process;
   protected $command;
-  // protected $ps;
   protected $config;
-  protected $io = array();
-  protected $activeIo = array();
+  protected $io;
+  protected $inputs = array();
+  protected $outputs = array();
   public $env;
-  protected $ret = array();
+  public $ret = array();
 
-  public function __construct() {}
+  public function __construct($fds) {
+    $this->pipes = array_fill_keys($fds, FALSE);
+    // $this->io = new SplObjectMap();
+  }
 
   public function attachCommand(CLICommand &$command) {
     $this->command = &$command;
+    $command->attachProcHandler($this);
     // $this->ps->attachCommand($command, $this);
   }
 
@@ -130,30 +216,67 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
   public function getProcDescriptor() {
     $descriptor = array();
-    foreach ($this->io as $fd => $handler) {
-      $descriptor[$fd] = $handler->getProcDescriptor();
+    foreach ($this->inputs as $fd => $handler) {
+      $descriptor[$fd] = $handler->getInputDescriptor();
+    }
+    foreach ($this->outputs as $fd => $handler) {
+      $descriptor[$fd] = $handler->getOutputDescriptor();
     }
     return $descriptor;
   }
 
-  public function attachIOHandler(CLIIOHandler &$io, int $descriptor) {
+  public function attachInputHandler(ProcInputHandler &$io, $descriptor = 0) {
+    if ($descriptor === 1) {
+      throw new InvalidArgumentException("Illegal file descriptor specification: stdout cannot take an input handler.", E_RECOVERABLE_ERROR);
+    }
+    if ($descriptor === 2) {
+      throw new InvalidArgumentException("Illegal file descriptor specification: stderr cannot take an input handler..", E_RECOVERABLE_ERROR);
+    }
+
+    $this->inputs[$descriptor] = &$io;
+    $this->io[$descriptor] = &$io;
+  }
+
+  public function attachOutputHandler(ProcOutputHandler &$io, $descriptor = 1) {
+    if ($descriptor === 0) {
+      throw new InvalidArgumentException("Illegal file descriptor specification: stdin cannot take an output handler.", E_RECOVERABLE_ERROR);
+    }
+
+    $this->outputs[$descriptor] = &$io;
     $this->io[$descriptor] = &$io;
   }
 
   public function &getProcPipes() {
-    return $this->procPipes;
+    return $this->pipes;
   }
 
   public function procOpen() {
     $this->procClose();
     $this->process = proc_open($this->command->getShellString(),
-      $this->getProcDescriptor(), $this->procPipes,
+      $this->getProcDescriptor(), $this->pipes,
       $this->config->getWorkingPath(), $this->env);
+    // Can only connect pipes AFTER the proc has been opened, because the
+    // internals of proc_open() do not respect pre-existing symbol table aliases
+    // (references) set to the appropriate item in $this->pipes.
+    $this->connectPipes();
+  }
+
+  protected function connectPipes() {
+    foreach ($this->inputs as $descriptor => &$io) {
+      if ($io instanceof ProcPipe) {
+        $this->pipes[$descriptor] = &$io->connectOut();
+      }
+    }
+    foreach ($this->outputs as $descriptor => &$io) {
+      if ($io instanceof ProcPipe) {
+        $io->connectIn($this->pipes[$descriptor]);
+      }
+    }
   }
 
   public function procHandle() {
     foreach ($this->io as $fd => $io) {
-      $this->ret[$fd] = $io->procHandle($this);
+      $this->ret[$fd] = $io->procHandle();
     }
   }
 
@@ -164,16 +287,15 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
     foreach ($this->io as $fd => &$io) {
       $io->procClose();
-      if (isset($this->procPipes[$fd]) && is_resource($this->procPipes[$fd])) {
-        fclose($this->procPipes[$fd]);
+      if (isset($this->pipes[$fd]) && is_resource($this->pipes[$fd])) {
+        fclose($this->pipes[$fd]);
       }
     }
-    // $this->procPipes = array();
 
     $exit = proc_close($this->process);
     if ($exit !== 0) {
       $text = "Invocation of command '{$this->command->getShellString()}' failed with exit code $exit";
-      // if ($this->io[2] instanceof CLIIOHandler && $stderr = (string) $this->io[2]) {
+      // if ($this->io[2] instanceof ProcIO && $stderr = (string) $this->io[2]) {
       if (!empty($this->ret[2])) {
         $text .= " and the following stderr output: '{$this->ret[2]}'";
       }
@@ -191,79 +313,17 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
 class CLIProcHandlerSingle extends ProcHandlerGeneric {
 
-  public function __construct() {
+  public function __construct($fds = array(1, 2)) {
+    parent::__construct($fds);
+    // FIXME can easily blow up here
+    $this->outputs = array(
+      1 => new ProcIOPipe(),
+      2 => new ProcIOPipe(),
+    );
     $this->io = array(
-      1 => new PassthruParser(),
-      2 => new PassthruParser(),
+      1 => &$this->outputs[1],
+      2 => &$this->outputs[2],
     );
+    // $this->outputs[2]->connectIn($this->pipes[2]);
   }
 }
-
-/*class CLIProcHandlerDouble extends ProcHandlerGeneric {
-
-}*/
-
-/*class CLIProcHandlerMulti extends ProcHandlerGeneric {
-
-}*/
-
-
-/*class ProcHandlerErrOnly extends ProcHandlerGeneric implements CLIProcHandlerStderr {
-  protected $procDescriptor = array(
-    2 => array('pipe', 'w'),
-  );
-
-  public function getStderr() {
-    return $this->stderr;
-  }
-
-  public function getStderrParser() {
-
-  }
-}
-
-class ProcHandlerErrOut extends ProcHandlerGeneric implements CLIProcHandlerStderr, CLIProcHandlerStdout {
-  protected $stderr;
-
-  public function getProcDescriptor() {
-    return array(
-      1 => $this->activeParser->openOutputHandle(),
-      2 => array('pipe', 'w'),
-    );
-  }
-
-  public function openOutputHandle() {
-    $this->output = fopen('php://temp', 'rw');
-    return $this->output;
-  }
-
-  public function getStderr() {
-    return $this->stderr;
-  }
-
-  public function setParser(CLIParser &$parser) {
-    $this->parser = &$parser;
-  }
-
-  public function execute() {
-    if ($this->parser instanceof CLIParser) {
-      $this->activeParser = $this->parser;
-    }
-    else {
-      $this->activeParser = new PassthruParser();
-    }
-    parent::execute();
-    // Unlink the active parser in the symbol table. Just an object identifier
-    // if a real parser was explicitly set (which means the object itself will
-    // remain). Otherwise it's the passthru parser and this will remove the sole
-    // symbol table reference to it, thereby inducing GC on the object.
-    unset($this->activeParser);
-    return $this->ret;
-  }
-}
-
-class ProcHandlerErrMulti extends ProcHandlerGeneric implements CLIProcHandlerStderr {
-
-}
-
-*/

@@ -88,6 +88,14 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
     }
   }
 
+  public function procHandle() {
+    return $this->parseOutput();
+  }
+
+  public function getOutputDescriptor() {
+    return $this->getProcDescriptor();
+  }
+
   public function clear() {}
 }
 

@@ -4,6 +4,8 @@
  * To compensate for ArrayAccess not being implemented on SplObjectStorage until
  * PHP 5.3
  *
+ * Documentation refers to this as a "splos."
+ *
  * @author sdboyer
  *
  */
@@ -66,45 +68,4 @@ interface CLICommandWrite {
 interface CLICommandOpt {
   public function getOrdinal();
   public function getShellString();
-}
-
-interface CLIIOHandler {
-  public function procClose($destruct = FALSE);
-  public function clear();
-  public function getProcDescriptor();
-}
-
-interface CLIParser extends CLIIOHandler {
-  public function parseOutput();
-  // public function __toString();
-}
-
-class CLIPipe implements CLIIOHandler {
-
-  protected $pipe;
-  protected $outCommand, $inCommand;
-
-  public function in(&$alias, CLICommand &$inCommand) {
-    $this->inCommand = &$inCommand;
-    $this->pipe = &$alias;
-  }
-
-  public function &out(CLICommand &$outCommand) {
-    $this->outCommand = &$outCommand;
-    return $this->pipe;
-  }
-
-  public function getProcDescriptor() {
-
-  }
-
-  public function procClose($destruct = FALSE) {
-    if (is_resource($this->pipe)) {
-      fclose($this->pipe);
-    }
-  }
-
-  public function clear() {
-
-  }
 }

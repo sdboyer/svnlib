@@ -118,7 +118,7 @@ abstract class SvnInstance extends SplFileInfo implements CLIWrapper {
 
   protected function buildCommand($classname, &$proc) {
     if (!class_exists($classname)) {
-      throw new InvalidArgumentException("Invalid svn subcommand '$subcommand' was requested.", E_RECOVERABLE_ERROR);
+      throw new InvalidArgumentException("Invalid svn subcommand class '$classname' was requested.", E_RECOVERABLE_ERROR);
     }
     $reflection = new ReflectionClass($classname);
     $this->getProcHandler($reflection, $proc);
@@ -204,7 +204,6 @@ class SvnWorkingCopy extends SvnInstance {
     $reflection = $this->buildCommand($classname, $proc);
     $cmd = new $classname($this->config, $defaults);
     $proc->attachCommand($cmd);
-    $cmd->attachProcHandler($proc);
     return $cmd;
   }
 }
@@ -271,7 +270,7 @@ class SvnRepository extends SvnInstance {
   public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD) {
     $classname = 'Svn' . $subcommand;
     $reflection = $this->buildCommand($classname, $proc);
-    if (!$reflection->getConstant('operatesOnRepositories')) {
+    if (!$reflection->getConstant('OPERATES_ON_REPOSITORIES')) {
       throw new InvalidArgumentException('Subversion repositories cannot do anything with the ' . $subcommand . ' svn subcommand.', E_RECOVERABLE_ERROR);
     }
     if ($reflection->isSubclassOf('SvnWrite') && !$this->isWritable()) {
@@ -280,7 +279,6 @@ class SvnRepository extends SvnInstance {
 
     $cmd = new $classname($this->config, $defaults);
     $proc->attachCommand($cmd);
-    $cmd->attachProcHandler($proc);
     return $cmd;
   }
 
