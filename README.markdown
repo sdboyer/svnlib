@@ -346,15 +346,18 @@ See the docblock for SvnCommand::clear() for more details.
 Some options can be set at the level of the SvnInstance, and will automatically
 be attached to any commands spawned from that instance.
 
-
 ## Caveats ##
 
  *  Serious effort has been invested in balancing speed with flexibility for
-    this library. All-userspace php can only be so fast, but the real speed
-    bottleneck is the system calls. If you are concerned about speed, _the most
-    important_ place to optimize code that utilizes this library is in
-    minimizing the number of times you call SvnCommand::execute(). Cache, queue
-    commands, do whatever it takes to minimize those calls.
+    this library. All-userspace php can only be so fast, but the library does is
+    pretty lightweight. If you are concerned about speed, the most important
+    thing to do is take advantage of things like aggregating targets, as it will
+    minimize object creation.
+ *  Versions of PHP prior to 5.3 have rather poor memory cleanup with respect to
+    circular references. Svnlib uses circular references as little as possible,
+    but if you're concerned about keeping memory usage to a minimum, forcibly
+    destroy command objects (i.e., set $commmand = NULL) when you're done with
+    them.
 
 ## License ##
 
