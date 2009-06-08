@@ -346,6 +346,66 @@ See the docblock for SvnCommand::clear() for more details.
 Some options can be set at the level of the SvnInstance, and will automatically
 be attached to any commands spawned from that instance.
 
+### Process Handling ###
+
+svnlib now uses a fully abstracted process handling system. This system,
+basically an OO wrapper around proc_open(), is responsible for handling
+everything directly related to making the actual system call you've queued up
+once SvnCommand::execute() is called. It manages the process itself (i.e.,
+opening and closing it, as well as ensuring that proper cleanup is performed on
+closing), as well as all process input and output. By default, the system
+operates transparently to client code, but you can take over and use your own
+process handlers that conform more specifically to your needs. In particular, if
+you need to pipe one command into another, you'll want to use a non-default proc
+handler. Because there are virtually no cases where it is useful to pipe one svn
+command to another, though, we won't document that here.
+
+WARNING: proc_open() has some odd behavior issues that can cause empty results,
+or worse, a PHP hang. These oddities are NOT documented (at least, nowhere that
+we have found), so if you do write your own proc handler, you need to know a bit
+about how the descriptors that are passed in to proc_open() will affect the
+behavior of the process.
+
+The php documentation (http://us2.php.net/manual/en/function.proc-open.php)
+indicates that there are two types of descriptors elements that proc_open()
+recognizes for its second parameter (the $descriptorspec; we refer to it as the
+procDescriptor): pipes (which can be actual pipes, or a 'file' type with a
+filename), and actual PHP stream resources. This is accurate with respect to
+the value of the $descriptorspec array element, but somewhat misleading in terms
+of the resulting behavior of proc_open(): PHP stream resources _AND_ "pipes"
+that are of 'file' type behave one way, while proper pipes behave another.
+The behavioral differences vary depending on which file descriptor they are
+specified for (e.g., 0 for stdin, 1 for stdout...). Most important are the
+variations for stdout:
+
+ *  When a pipe is used on stdout, the new process is not actually spawned and
+    started until something gets connected to the read end of the pipe and says
+    'go'.
+ *  When a stream is used on stdout, the process is spawned and begins during
+    the proc_open call itself, while PHP execution proceeds simultaneously.
+
+What you connect to stdout, then, must govern some aspects of the way the rest
+of your proc handler is written:
+
+ *  If you use a pipe, but aren't piping to another command (which is perfectly
+    OK), then process execution will begin when you call stream_get_contents()
+    on the $this->procPipes[1]; this can be handy, because PHP execution will
+    wait on stream_get_contents() until the process finishes. HOWEVER, if you
+    also use a pipe on stderr and call stream_get_contents($this->procPipes[2])
+    before you collect from stdout, THEN PHP WILL HANG.
+ *  When using a stream, process execution begins right away so there is no risk
+    of a PHP hang, but calling stream_get_contents() on the stream will return
+    its contents at the time the call is made, whether or not the process has
+    completed - and PHP execution will continue. Consequently, if you are using
+    a stream where it matters that your stdout handling be managed inside of
+    your php process (i.e., your stream doesn't point to a socket or something)
+    then you must take steps to ensure the process has exited/the streams are
+    properly filled (and remember to rewind() them!) before continuing on.
+    Depending on your use case, stream_select() and/or proc_get_status() will
+    probably be adequate tools for the job.
+ *  If you do not specify a stdout handler, the behavior of the proces is the
+    same as with attaching a stream.
+
 ## Caveats ##
 
  *  Serious effort has been invested in balancing speed with flexibility for
