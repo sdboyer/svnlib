@@ -10,15 +10,15 @@ root=$(dirname $MY_PATH)
 cd $root
 
 
-if [ ! -d "$root/repo" ]; then
+if [ ! -d "$root/testdata/repo" ]; then
   echo "Creating test repository"
-  mkdir $root/repo
-  svnadmin create $root/repo > /dev/null 2>&1
+  mkdir -p $root/testdata/repo > /dev/null
+  svnadmin create $root/testdata/repo > /dev/null 2>&1
   test -f $root/repo.svnadmin.bz2 && bunzip2 $root/repo.svnadmin.bz2
-  svnadmin load $root/repo < $root/repo.svnadmin > /dev/null 2>&1
+  svnadmin load $root/testdata/repo < $root/repo.svnadmin > /dev/null 2>&1
 fi
 
-if [ ! -d "$root/wc" ]; then
+if [ ! -d "$root/testdata/wc" ]; then
   echo "Checking out test working copy"
   svn co file://$root/repo wc
 fi
