@@ -20,7 +20,7 @@ fi
 
 if [ ! -d "$root/testdata/wc" ]; then
   echo "Checking out test working copy"
-  svn co file://$root/repo wc
+  svn co file://$root/testdata/repo testdata/wc
 fi
 
 php -d safe_mode=Off phpunit.php -- $root/tests
