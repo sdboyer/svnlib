@@ -7,8 +7,8 @@ class SvnCommandInitTest extends PHPUnit_Framework_TestCase {
   public function setUp() {
     $this->wcConfig = new SvnCommandConfig();
     $this->repoConfig = new SvnCommandConfig();
-    $this->wc = new SvnWorkingCopy(getcwd() . '/testdata/wc', $this->wcConfig);
-    $this->repo = new SvnRepository('file://' . getcwd() . '/testdata/repo', $this->repoConfig);
+    $this->wc = new SvnWorkingCopy(getcwd() . '/data/static/wc', $this->wcConfig);
+    $this->repo = new SvnRepository('file://' . getcwd() . '/data/static/repo', $this->repoConfig);
     $this->instance = &$this->wc;
     $this->config = &$this->wcConfig;
   }
@@ -28,8 +28,8 @@ abstract class SvnCommandTest extends PHPUnit_Framework_TestCase {
   public function setUp() {
     $this->wcConfig = new SvnCommandConfig();
     $this->repoConfig = new SvnCommandConfig();
-    $this->wc = new SvnWorkingCopy(getcwd() . '/testdata/wc', $this->wcConfig);
-    $this->repo = new SvnRepository('file://' . getcwd() . '/testdata/repo', $this->repoConfig);
+    $this->wc = new SvnWorkingCopy(getcwd() . '/data/static/wc', $this->wcConfig);
+    $this->repo = new SvnRepository('file://' . getcwd() . '/data/static/repo', $this->repoConfig);
     $this->instance = &$this->wc;
     $this->config = &$this->wcConfig;
   }

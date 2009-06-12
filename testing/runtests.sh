@@ -10,17 +10,17 @@ root=$(dirname $MY_PATH)
 cd $root
 
 
-if [ ! -d "$root/testdata/repo" ]; then
+if [ ! -d "$root/data/static/repo" ]; then
   echo "Creating test repository"
-  mkdir -p $root/testdata/repo > /dev/null
-  svnadmin create $root/testdata/repo > /dev/null 2>&1
+  mkdir -p $root/data/static/repo > /dev/null
+  svnadmin create $root/data/static/repo > /dev/null 2>&1
   test -f $root/repo.svnadmin.bz2 && bunzip2 $root/repo.svnadmin.bz2
-  svnadmin load $root/testdata/repo < $root/repo.svnadmin > /dev/null 2>&1
+  svnadmin load $root/data/static/repo < $root/repo.svnadmin > /dev/null 2>&1
 fi
 
-if [ ! -d "$root/testdata/wc" ]; then
+if [ ! -d "$root/data/static/wc" ]; then
   echo "Checking out test working copy"
-  svn co file://$root/testdata/repo testdata/wc
+  svn co file://$root/data/static/repo data/static/wc
 fi
 
 php -d safe_mode=Off phpunit.php -- $root/tests

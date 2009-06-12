@@ -19,8 +19,8 @@ class SvnWorkingCopyInitTest extends PHPUnit_Framework_TestCase {
 
   public function testAutoSubPathing() {
     $config = new SvnCommandConfig();
-    $wc = new SvnWorkingCopy(getcwd() . '/testdata/wc/trunk', $config);
-    $this->assertEquals(getcwd() . DIRECTORY_SEPARATOR . 'testdata/wc', (string) $wc,
+    $wc = new SvnWorkingCopy(getcwd() . '/data/static/wc/trunk', $config);
+    $this->assertEquals(getcwd() . DIRECTORY_SEPARATOR . 'data/static/wc', (string) $wc,
       "Wrapper was not properly reset to the working copy root.");
     $this->assertEquals($config->subPath, 'trunk',
       "Subpath was not properly extracted from initial path argument.");
@@ -34,7 +34,7 @@ abstract class SvnInstanceTest extends PHPUnit_Framework_TestCase {
   }
 
   public function testInfoBuild() {
-    $this->assertEquals("file://" . getcwd() . DIRECTORY_SEPARATOR . 'testdata/repo', $this->instance->getRepoRoot(),
+    $this->assertEquals("file://" . getcwd() . DIRECTORY_SEPARATOR . 'data/static/repo', $this->instance->getRepoRoot(),
       "Incorrect repository root was retrieved.");
     $this->assertEquals(340, $this->instance->getLatestRev(),
       "Incorrect latest revision was retrieved.");
@@ -75,7 +75,7 @@ class SvnWorkingCopyTest extends SvnInstanceTest {
 
   public function setUp() {
     parent::setUp();
-    $this->instance = new SvnWorkingCopy(getcwd() . '/testdata/wc', $this->config);
+    $this->instance = new SvnWorkingCopy(getcwd() . '/data/static/wc', $this->config);
   }
 }
 
@@ -83,6 +83,6 @@ class SvnRepositoryTest extends SvnInstanceTest {
 
   public function setUp() {
     parent::setUp();
-    $this->instance = new SvnRepository('file://' . getcwd() . '/testdata/repo', $this->config);
+    $this->instance = new SvnRepository('file://' . getcwd() . '/data/static/repo', $this->config);
   }
 }
