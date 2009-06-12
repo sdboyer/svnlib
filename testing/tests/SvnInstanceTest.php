@@ -85,4 +85,17 @@ class SvnRepositoryTest extends SvnInstanceTest {
     parent::setUp();
     $this->instance = new SvnRepository('file://' . getcwd() . '/data/static/repo', $this->config);
   }
+
+  public function testCreateWorkingCopy() {
+    $wc = $this->instance->checkoutWorkingCopy(getcwd() . '/data/static/wctmp');
+    $this->assertTrue($wc instanceof SvnWorkingCopy, "SvnRepository::checkoutWorkingCopy failed to generate a working copy appropriately.");
+    rmdirr($wc);
+  }
+}
+
+function rmdirr($path) {
+  foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path), RecursiveIteratorIterator::CHILD_FIRST) as $item) {
+    $item->isFile() ? unlink($item) : rmdir($item);
+  }
+  rmdir($path);
 }

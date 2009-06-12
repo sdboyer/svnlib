@@ -251,11 +251,11 @@ class SvnRepository extends SvnInstance {
     }
   }
 
-//  protected function getInfo() {
-//    parent::getInfo();
-//    $pieces = explode('://', (string) $this);
-//    $this->protocol = $pieces[0];
-//  }
+  protected function getInfo() {
+    parent::getInfo();
+    $pieces = explode('://', (string) $this);
+    $this->config->protocol = $pieces[0];
+  }
 
   /**
    * Get the path to be prepended to individual file items
@@ -291,7 +291,7 @@ class SvnRepository extends SvnInstance {
   public function isWritable() {
     // TODO WRITE_CAPABLE just gets us in the door, we then need to run
     // more checks
-    return self::$protocols[$this->protocol] & self::WRITE_CAPABLE;
+    return self::$protocols[$this->config->protocol] & self::WRITE_CAPABLE;
   }
 
   public function svnadmin($subcommand, CLIProcHandler $proc = NULL, $defaults = NULL) {
@@ -301,6 +301,27 @@ class SvnRepository extends SvnInstance {
     $cmd = new $classname($this, is_null($defaults) ? $this->defaults : $defaults);
     $proc->attachCommand($cmd);
     return $cmd;
+  }
+
+  /**
+   * Creates a new working copy checkout of this repository at the location
+   * specified in the first parameter.
+   *
+   * If an SvnCommandConfig object is provided, the new SvnWorkingCopy object
+   * will use it; otherwise it will spawn its own (per the default behavior).
+   *
+   * @param string $path
+   * @param SvnCommandConfig $config
+   * @return SvnWorkingCopy
+   */
+  public function checkoutWorkingCopy($path, SvnCommandConfig $config = NULL) {
+    $this->config->usePrependPath = FALSE;
+    $this->svn('checkout')
+      ->target($path)
+      ->target($this->getRepoRoot())
+      ->execute();
+    $this->config->usePrependPath = TRUE;
+    return new SvnWorkingCopy($path, $config);
   }
 }
 
@@ -318,6 +339,7 @@ class SvnCommandConfig implements CLIWrapperConfig {
   public $latestRev;
   public $protocol;
   public $path;
+  public $usePrependPath = TRUE;
 
   public function __construct() {
     // Because it's very easy for the svnlib to fail (hard and with weird errors)

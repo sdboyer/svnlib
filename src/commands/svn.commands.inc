@@ -133,7 +133,7 @@ abstract class SvnCommand implements CLICommand {
    * @return SvnCommand
    */
   protected function setDefaults() {
-    $this->cmdSwitches |= self::XML | self::NON_INTERACTIVE;
+    $this->cmdSwitches |= self::NON_INTERACTIVE;
     return $this;
   }
 
@@ -583,7 +583,6 @@ abstract class SvnCommand implements CLICommand {
 abstract class SvnWrite extends SvnCommand {
 
   const OPERATES_ON_REPOSITORIES = FALSE;
-  const PROC_HANDLER = 'ProcHandlerErrOnly';
 
   public function dryRun($arg = TRUE) {
     $this->fiddleSwitch($arg, self::DRY_RUN);
@@ -649,6 +648,7 @@ abstract class SvnRead extends SvnCommand {
 
   public function setDefaults() {
     parent::setDefaults();
+    $this->cmdSwitches |= self::XML;
     $this->internalSwitches |= self::PARSE_OUTPUT;
     if (isset($this->parserClass)) {
       $this->setParser();

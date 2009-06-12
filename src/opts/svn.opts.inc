@@ -145,7 +145,7 @@ class SvnOptTargets extends SvnOpt {
   }
 
   public function addTarget($target, $rev = NULL) {
-    $string = $this->sc->config->getPrependPath();
+    $string = $this->sc->config->usePrependPath ? $this->sc->config->getPrependPath() : '';
     // FIXME what's the proper approach to escaping input here?
     if ($rev !== NULL) {
       $this->usingRevs = TRUE;
@@ -208,7 +208,7 @@ class SvnOptTarget extends SvnOpt {
   }
 
   public function getShellString() {
-    $string = $this->sc->config->getPrependPath();
+    $string = $this->sc->config->usePrependPath ? $this->sc->config->getPrependPath() : '';
     $string .= ($this->rev === FALSE) ?  $this->arg : $this->arg . '@' . $this->rev;
     return escapeshellarg($string);
   }
