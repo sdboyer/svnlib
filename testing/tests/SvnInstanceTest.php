@@ -43,27 +43,31 @@ abstract class SvnInstanceTest extends PHPUnit_Framework_TestCase {
   public function testGlobalOpts() {
     $this->instance->username('usernametest');
     $this->assertEquals('usernametest', $this->config->username,
-      "Username are not being set properly by SvnInstance::username().");
+      "Username are not being set properly by {$this->instanceClass()}::username().");
     $this->instance->password('passwordtest');
     $this->assertEquals('passwordtest', $this->config->password,
-      "Username are not being set properly by SvnInstance::username().");
+      "Username are not being set properly by {$this->instanceClass()}::username().");
     $this->instance->username('usernametest');
     $this->assertEquals('usernametest', $this->config->username,
-      "Username are not being set properly by SvnInstance::username().");
+      "Username are not being set properly by {$this->instanceClass()}::username().");
   }
 
   public function testSubpathing() {
     $this->instance->setSubPath('trunk');
     $this->assertEquals('trunk', $this->config->subPath,
-      "Subpaths are not being set correctly by SvnInstance::setSubPath().");
+      "Subpaths are not being set correctly by {$this->instanceClass()}::setSubPath().");
     $this->instance->setSubPath('');
     $this->instance->appendSubPath('trunk');
     $this->assertEquals('trunk', $this->config->subPath,
-      "Subpaths are not being built correctly by SvnInstance::appendSubPath().");
+      "Subpaths are not being built correctly by {$this->instanceClass()}::appendSubPath().");
   }
 
   public function testConfigMethod() {
 
+  }
+
+  protected function instanceClass() {
+    return get_class($this->instance);
   }
 }
 
