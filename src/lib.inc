@@ -57,14 +57,6 @@ interface CLICommand {
   public function attachProcHandler(CLIProcHandler $proc);
 }
 
-interface CLICommandRead {
-  // public function parse();
-}
-
-interface CLICommandWrite {
-
-}
-
 interface CLICommandOpt {
   public function getOrdinal();
   public function getShellString();
