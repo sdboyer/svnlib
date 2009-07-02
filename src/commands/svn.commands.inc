@@ -146,57 +146,12 @@ abstract class SvnCommand implements CLICommand {
     }
   }
 
-  /**
-   * Wrapper for proc_open() that ensures any existing processes have already
-   * been cleaned up.
-   *
-   * @return void
-   */
-  protected function procOpen() {
-    $this->procClose();
-    $this->process = proc_open($this->getShellString(), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
-  }
-
   public function getShellString() {
     if (!($this->internalSwitches & self::PREPARED)) {
       $this->prepare(FALSE);
       $this->shellString = implode(' ', $this->cmds);
     }
     return $this->shellString;
-  }
-
-  abstract protected function getProcDescriptor();
-  abstract protected function procHandle();
-
-  /**
-   * Helper function for SvnCommand::procHandle() that makes it a smidge less
-   * kluge by eliminating the need for duplicating the actual code for checking
-   * stderr.
-   */
-  protected function procHandleStdErr() {
-    if ($stderr = stream_get_contents($this->procPipes[2])) {
-      $status = proc_get_status($this->process);
-      if ($status['exitcode']) {
-        throw new RuntimeException('svn failed with the following message: ' . $stderr, E_RECOVERABLE_ERROR);
-      }
-      else {
-        throw new RuntimeException('The ' . get_class($this) . ' command completed successfully, but threw the following error(s) during execution: ' . $stderr, E_NOTICE);
-      }
-    }
-  }
-
-  /**
-   * Wrapper for proc_close() that cleans up the currently running process.
-   * @return void
-   */
-  protected function procClose($destruct = FALSE) {
-    if (is_resource($this->process)) {
-      foreach ($this->procPipes as $pipe) {
-        fclose($pipe);
-      }
-      $this->procPipes = array();
-      $this->process = proc_close($this->process);
-    }
   }
 
   /**
@@ -681,100 +636,6 @@ abstract class SvnRead extends SvnCommand {
     }
     $this->proc->attachIOHandler($parser, 1);
     return $this;
-  }
-
-/*  public function execute($fluent = FALSE) {
-    // If we're set to parse output, use the currently set parser; otherwise,
-    if ($this->internalSwitches & self::PARSE_OUTPUT) {
-      if (!$this->parser instanceof CLIParser) {
-        throw new RuntimeException("Output parsing requested, but no output parser was set.", E_ERROR);
-      }
-      // other, more forgiving approach
-      // if (!$this->parser instanceof CLIParser) { $this->setParser(); }
-      $this->activeParser = $this->parser;
-    }
-    elseif (!$this->activeParser instanceof PassthruParser) {
-      $this->activeParser = new PassthruParser();
-    }
-    else {
-      throw new UnexpectedValueException("The subcommand was set to use an output parser, but no acceptable parser was specified.", E_RECOVERABLE_ERROR);
-    }
-    parent::execute(FALSE);
-    // Unlink the active parser. Just an object identifier if one's been set, or
-    // will kill the dummy parser by marking it for GC.
-    unset($this->activeParser);
-    return $fluent ? $this : $this->ret;
-  }*/
-
-  protected function procOpen() {
-    $this->procClose();
-    $this->process = proc_open($this->getShellString(), $this->getProcDescriptor(), $this->procPipes, $this->config->getWorkingPath(), NULL);
-  }
-
-  /**
-   * The meat of execution - process input/output/error is all handled by this
-   * method.
-   *
-   * A crucial part of SvnCommand::procHandle() is the handling it provides for
-   * error output. For SvnRead and children, there is a knotty problem to be
-   * solved there, due to the fact that PHP will hang if:
-   *  - SvnRead::getProcDescriptor() defines a process descriptor with pipes on
-   *    BOTH stdout and stderr (descriptors 1 and 2, respectively).
-   *  - stream_get_contents() is called on the stderr output pipe (here,
-   *    $this->procPipes[2]) before output is collected from the stdout pipe.
-   *
-   * This behavior occurs because the system call expects something to connect
-   * to the read end of the stdout pipe ($this->procPipes[1]) before the process
-   * will actually be run. Consequently, when PHP tries to connect to the stderr
-   * pipe first, we get caught indefinitely waiting - on the one end, the system
-   * is waiting for something on the read end of stdout, and on the other, PHP
-   * is waiting for the read end of stderr to be filled.
-   *
-   * The svnlib provides two types of output parsers by default. There's the
-   * specialized output parsers, typically XML-oriented, most of which share
-   * SvnOutputHandler as an abstract parent class. Then there's the general
-   * DummyParser that acts as a transparent stand-in class, satisfying the
-   * CLIParser interface when SvnRead::PARSE_OUTPUT is not set (and thereby
-   * preventing klugey code for passing raw output in the svnlib itself). All of
-   * these eschew pipes for file pointer resources (typically streams of type
-   * php://temp), so this is not a problem under native circumstances. However,
-   * client code could easily pass in a parser that does use a pipe for stdout
-   * (TODO: although the svnlib, as currently written, does not support this),
-   * which means our code has to deal with this problem.
-   *
-   * proc_get_status(), which provides an associative array with metadata about
-   * the current state of the process (including exit code), is not an option.
-   * Because proc_open() spawns processes separately and PHP code execution
-   * continues immediately, it is quite easy for a call to proc_get_status()
-   * here to happen before the process itself completes. (PHP only waits for the
-   * process to complete if we try to access stdout). We could wait, then
-   * re-call proc_get_status(), but because it only reports exit code accurately
-   * on the first call, there's no point.
-   *
-   * The only option that is guaranteed to work in all cases is the somewhat
-   * klugey check you see below: if $this->activeParser implements the
-   * CLIPipeStdOut interface, indicating that it is using a pipe for stdout,
-   * then we grab output first; otherwise, we grab stderr first and never bother
-   * getting the output at all if the process exited with a non-zero exit code.
-   */
-  protected function procHandle() {
-    if ($this->activeParser instanceof CLIPipeStdOut) {
-      $this->ret = $this->activeParser->parseOutput();
-      $this->procHandleStdErr();
-    }
-    else {
-      $this->procHandleStdErr();
-      $this->ret = $this->activeParser->parseOutput();
-    }
-  }
-
-  protected function procClose($destruct = FALSE) {
-    // Because this can be triggered externally through calls to
-    // SvnCommand::clear(), an activeParser may not be set.
-    if (!empty($this->activeParser)) {
-      $this->activeParser->procClose($destruct);
-    }
-    parent::procClose();
   }
 
   /**
