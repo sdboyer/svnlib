@@ -35,6 +35,10 @@ interface ProcInputHandler extends ProcIO {
   public function getInputDescriptor();
 }
 
+interface ProcInputPipe extends ProcInputHandler {
+  public function &connectOut();
+}
+
 /**
  * These go on stdout and stderr, and/or some other nonstandard file descriptor.
  */
@@ -42,16 +46,11 @@ interface ProcOutputHandler extends ProcIO  {
   public function getOutputDescriptor();
 }
 
-interface ProcPipe {
-  public function &connectOut();
+interface ProcOutputPipe extends ProcOutputHandler {
   public function connectIn(&$pipe);
 }
 
-interface CLIParser extends ProcIO {
-  public function parseOutput();
-}
-
-class ProcIOPipe implements ProcPipe, ProcInputHandler, ProcOutputHandler {
+class ProcIOPipe implements ProcInputPipe, ProcOutputPipe {
   protected $outConnected = FALSE;
   protected $pipe;
 
@@ -73,7 +72,7 @@ class ProcIOPipe implements ProcPipe, ProcInputHandler, ProcOutputHandler {
   }
 
   public function connectIn(&$pipe) {
-    $this->pipe = $pipe;
+    $this->pipe = &$pipe;
   }
 
   public function procClose() {
@@ -114,7 +113,6 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
   public function __construct($fds) {
     $this->pipes = array_fill_keys($fds, FALSE);
-    // $this->io = new SplObjectMap();
   }
 
   public function attachCommand(CLICommand &$command) {
@@ -174,12 +172,12 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
   protected function connectPipes() {
     foreach ($this->inputs as $descriptor => &$io) {
-      if ($io instanceof ProcPipe) {
+      if ($io instanceof ProcInputPipe) {
         $this->pipes[$descriptor] = &$io->connectOut();
       }
     }
     foreach ($this->outputs as $descriptor => &$io) {
-      if ($io instanceof ProcPipe) {
+      if ($io instanceof ProcOutputPipe) {
         $io->connectIn($this->pipes[$descriptor]);
       }
     }
