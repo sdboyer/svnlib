@@ -14,7 +14,7 @@ define('SVNLIB_LIBXML_FLAGS', LIBXML_VERSION >= 20621 ? LIBXML_COMPACT | LIBXML_
  * any modification, but still implements the CLIParser interface so as to
  * reduce complexity in CLICommand implementations.
  */
-class PassthruParser implements CLIParser {
+class PassthruParser implements ProcOutputHandler {
   protected $output;
 
   public function __construct() {}
@@ -36,7 +36,7 @@ class PassthruParser implements CLIParser {
     }
   }
 
-  public function getProcDescriptor() {
+  public function getOutputDescriptor() {
     $this->output = fopen('php://temp', 'rw');
     return $this->output;
   }
@@ -46,7 +46,7 @@ class PassthruParser implements CLIParser {
  * XML-based parsers.
  */
 
-abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser {
+abstract class SvnXMLOutputHandler extends IteratorIterator implements ProcOutputHandler {
   protected $output;
 
   /**
@@ -73,7 +73,7 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
     return $this->parse($this->getInnerIterator()->current());
   }
 
-  public function getProcDescriptor() {
+  public function getOutputDescriptor() {
     $this->output = fopen('php://temp', 'rw');
     return $this->output;
   }
@@ -90,10 +90,6 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements CLIParser
 
   public function procHandle() {
     return $this->parseOutput();
-  }
-
-  public function getOutputDescriptor() {
-    return $this->getProcDescriptor();
   }
 
   public function clear() {}
