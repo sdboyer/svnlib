@@ -212,11 +212,14 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
     }
   }
 
-  public function execute($fds = array()) {
+  public function execute($fds = NULL) {
     $this->procOpen();
     $this->procHandle();
     $this->procClose();
-    return empty($fds) ? $this->ret : array_intersect_keys($this->ret, array_flip($fds));
+    if (is_numeric($fds) || is_array($fds)) {
+      return is_array($fds) ? array_intersect_key($this->ret, array_flip($fds)) : $this->ret[$fds];
+    }
+    return $this->ret;
   }
 }
 

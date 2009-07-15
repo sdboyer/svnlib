@@ -69,9 +69,9 @@ abstract class SvnXMLOutputHandler extends IteratorIterator implements ProcOutpu
  */
 class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
-  protected function parse($entry, $decode = FALSE) {
+  protected function parse($entry) {
     $item = array(
-      'url'             => $decode ? rawurldecode($entry->url) : (string) $entry->url,
+      'url'             => rawurldecode($entry->url),
       'repository_root' => (string) $entry->repository->root,
       'repository_uuid' => (string) $entry->repository->uuid,
       'type'            => (string) $entry['kind'],
@@ -97,7 +97,6 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   public function seekRev($rev) {
     $items = array();
-    // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']")) as $item) {
     foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']") as $entry) {
       $item = $this->parse($entry, TRUE);
       $items[$item['path']] = $item;
@@ -107,7 +106,6 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
 
   public function seekPath($path) {
     $items = array();
-    // foreach ($this->parse($this->getInnerIterator()->xpath("/info/entry[@path='$path']")) as $item) {
     foreach ($this->getInnerIterator()->xpath("/info/entry[url = '$path']") as $entry) {
       $item = $this->parse($entry, TRUE);
       $items[$item['rev']] = $item;
@@ -116,8 +114,6 @@ class SvnInfoXMLParser extends SvnXMLOutputHandler implements SeekableIterator {
   }
 
   public function seekBoth($rev, $path) {
-//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev'][url=concat(.//root,'/','$path')]") as $entry) {
-//    foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev']/url[contains(.,'$path')]/..") as $entry) {
     foreach ($this->getInnerIterator()->xpath("/info/entry[@revision='$rev' and url='$path']") as $entry) {
       $item = $this->parse($entry, TRUE);
       if (!$item['url'] == $item['repository_root'] . DIRECTORY_SEPARATOR . $path) {

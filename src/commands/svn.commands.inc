@@ -179,7 +179,6 @@ abstract class SvnCommand implements CLICommand {
    * @return SvnCommand $this
    */
   public function clear($preserve_flags = 0) {
-    $this->procClose();
     if (!$preserve_flags & self::PRESERVE_CMD_OPTS) {
       unset($this->cmdOpts);
       $this->cmdOpts = array();
@@ -452,12 +451,8 @@ abstract class SvnCommand implements CLICommand {
    *  $this instead of the possibly parsed return value). Defaults to FALSE.
    * @return mixed
    */
-  public function execute($fluent = FALSE) {
-    if (!$fluent) {
-      return $this->proc->execute();
-    }
-    $this->proc->execute();
-    return $this;
+  public function execute($fds = NULL) {
+    return $this->proc->execute($fds);
   }
 
   /**
