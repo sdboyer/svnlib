@@ -458,15 +458,6 @@ abstract class SvnCommand implements CLICommand {
     }
     $this->proc->execute();
     return $this;
-    // return ProcStorage::getInstance()->getProcHandler($this)->execute($fluent);
-
-/*    $this->procOpen();
-    $this->procHandle();
-    $this->procClose();
-
-    if ($fluent) {
-      return $this;
-    }*/
   }
 
   /**
@@ -539,16 +530,6 @@ abstract class SvnWrite extends SvnCommand {
     $this->fiddleSwitch($arg, self::DRY_RUN);
     return $this;
   }
-
-  protected function getProcDescriptor() {
-    return array(
-      2 => array('pipe', 'w'),
-    );
-  }
-
-  protected function procHandle() {
-    $this->procHandleStdErr();
-  }
 }
 
 /**
@@ -570,13 +551,6 @@ abstract class SvnRead extends SvnCommand {
   protected $ret;
 
   const OPERATES_ON_REPOSITORIES = TRUE;
-
-  protected function getProcDescriptor() {
-    return array(
-      1 => $this->activeParser->openOutputHandle(),
-      2 => array('pipe', 'w'),
-    );
-  }
 
   /**
    * Adds an operative revision to the currently queuing command. Note that
@@ -614,7 +588,7 @@ abstract class SvnRead extends SvnCommand {
    * @return SvnRead
    */
   public function setParser($parser = NULL) {
-    if (!$parser instanceof CLIParser) {
+    if (!$parser instanceof ProcOutputHandler) {
       if (is_null($parser)) {
         // No parser provided at all; set it to the parserClass.
         $parser = $this->parserClass;
@@ -630,7 +604,7 @@ abstract class SvnRead extends SvnCommand {
       }
       $parser = new $parser();
     }
-    $this->proc->attachIOHandler($parser, 1);
+    $this->proc->attachOutputHandler($parser);
     return $this;
   }
 
