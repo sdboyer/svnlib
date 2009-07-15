@@ -44,7 +44,6 @@ interface CLIWrapperConfig {
 }
 
 interface CLICommand {
-  const NOTIFY_EXECUTE = 0x001;
   /**
    * The name of the class, as a string, that this object prefers as its default
    * process handler. This process handler will be used if no higher-priority
@@ -53,10 +52,10 @@ interface CLICommand {
    * @var string
    */
   const PROC_HANDLER = 'CLIProcHandlerSingle';
-  public function __construct(CLIWrapperConfig $config, $defaults);
+  public function __construct(CLIWrapperConfig $config, CLIProcHandler &$proc, $defaults);
   public function prepare();
   public function execute();
-  public function attachProcHandler(CLIProcHandler $proc);
+  public function attachProcHandler(CLIProcHandler &$proc);
 }
 
 interface CLICommandOpt {

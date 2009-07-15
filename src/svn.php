@@ -202,9 +202,7 @@ class SvnWorkingCopy extends SvnInstance {
   public function svn($subcommand, CLIProcHandler &$proc = NULL, $defaults = self::PCUD) {
     $classname = 'svn' . $subcommand;
     $reflection = $this->buildCommand($classname, $proc);
-    $cmd = new $classname($this->config, $defaults);
-    $proc->attachCommand($cmd);
-    return $cmd;
+    return new $classname($this->config, $proc, $defaults);
   }
 }
 
@@ -277,9 +275,7 @@ class SvnRepository extends SvnInstance {
       throw new InvalidArgumentException("Write operation '$subcommand' was requested, but the repository is not writable from here.", E_RECOVERABLE_ERROR);
     }
 
-    $cmd = new $classname($this->config, $defaults);
-    $proc->attachCommand($cmd);
-    return $cmd;
+    return new $classname($this->config, $proc, $defaults);
   }
 
   /**

@@ -24,7 +24,6 @@ interface CLIProcHandler {
 }
 
 interface ProcIO {
-  // public function __construct(&$pipe);
   public function procHandle();
   public function procClose();
 }
@@ -32,19 +31,15 @@ interface ProcIO {
 /**
  * These go on stdin, and/or some other nonstandard file descriptor.
  */
-interface ProcInputHandler {
-  // public function __construct(ProcIO $io);
+interface ProcInputHandler extends ProcIO {
   public function getInputDescriptor();
-  // public function getInput();
 }
 
 /**
  * These go on stdout and stderr, and/or some other nonstandard file descriptor.
  */
-interface ProcOutputHandler {
-  // public function __construct(ProcIO $io);
+interface ProcOutputHandler extends ProcIO  {
   public function getOutputDescriptor();
-  // public function getOutput();
 }
 
 interface ProcPipe {
@@ -54,34 +49,12 @@ interface ProcPipe {
 
 interface CLIParser extends ProcIO {
   public function parseOutput();
-  // public function __toString();
 }
-
-/*class ProcIOPipe implements ProcIO {
-
-  protected $pipe;
-
-  public function __construct(&$pipe) {
-    $this->pipe = &$pipe;
-  }
-
-  public function getProcDescriptor() {
-
-  }
-
-  public function procClose($destruct = FALSE) {
-    if (is_resource($this->pipe)) {
-      fclose($this->pipe);
-    }
-  }
-}*/
 
 class ProcIOPipe implements ProcPipe, ProcInputHandler, ProcOutputHandler {
   protected $outConnected = FALSE;
   protected $pipe;
-/*  public function __construct(ProcIO &$io) {
-    $this->io = &$io;
-  }*/
+
   public function procHandle() {
     if (!$this->outConnected) return stream_get_contents($this->pipe);
   }
@@ -110,7 +83,6 @@ class ProcIOPipe implements ProcPipe, ProcInputHandler, ProcOutputHandler {
 
 class ProcIOFileTemp implements ProcOutputHandler {
   protected $output;
-  // public function __construct(&$pipe) {}
 
   public function getOutputDescriptor() {
     $this->output = fopen('php://temp', 'rw');
@@ -147,8 +119,6 @@ abstract class ProcHandlerGeneric implements CLIProcHandler {
 
   public function attachCommand(CLICommand &$command) {
     $this->command = &$command;
-    $command->attachProcHandler($this);
-    // $this->ps->attachCommand($command, $this);
   }
 
   public function attachConfig(CLIWrapperConfig &$config) {

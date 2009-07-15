@@ -69,14 +69,19 @@ abstract class SvnCommand implements CLICommand {
    */
   public $config;
 
+  /**
+   *
+   * @var CLIProcHandler
+   */
   protected $proc;
 
   public $internalSwitches = 0;
   public $cmdSwitches = 0;
   protected $cmdOpts = array();
 
-  public function __construct(CLIWrapperConfig $config, $defaults) {
+  public function __construct(CLIWrapperConfig $config, CLIProcHandler &$proc, $defaults) {
     $this->config = $config;
+    $this->attachProcHandler($proc);
 
     // Set up the cmdSwitches array for use.
     $this->setSwitches();
@@ -94,8 +99,9 @@ abstract class SvnCommand implements CLICommand {
     }
   }
 
-  public function attachProcHandler(CLIProcHandler $proc) {
-    $this->proc = $proc;
+  public function attachProcHandler(CLIProcHandler &$proc) {
+    $this->proc = &$proc;
+    $proc->attachCommand($this);
     return $this;
   }
 
@@ -611,7 +617,7 @@ abstract class SvnRead extends SvnCommand {
     if (!$parser instanceof CLIParser) {
       if (is_null($parser)) {
         // No parser provided at all; set it to the parserClass.
-        $parser = new $$this->parserClass();
+        $parser = $this->parserClass;
       }
       elseif (!is_string($parser) || !class_exists($parser)) {
         // Until we have late static binding (PHP 5.3), __CLASS__ used in this way
