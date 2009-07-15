@@ -63,17 +63,11 @@ abstract class SvnCommand implements CLICommand {
   protected $switchInfo = array();
   public $cmds = array();
 
-  protected $procDescriptor = array(
-      2 => array('pipe', 'w'),
-    );
-
   /**
    *
    * @var SvnCommandConfig
    */
   public $config;
-
-  protected $procPipes = array();
 
   protected $proc;
 
@@ -437,10 +431,6 @@ abstract class SvnCommand implements CLICommand {
     $this->processOpts($opts, $this->cmdOpts);
     asort($opts, SORT_NUMERIC);
     $this->cmds = array_merge($this->cmds, array_keys($opts));
-//    if ($this->config instanceof SvnWorkingCopy) {
-//      $this->cmds = array_merge($this->config->prepare(), $this->cmds);
-//    }
-
     array_unshift($this->cmds, 'svn', $this->command);
     return $fluent ? $this : $this->cmds;
   }

@@ -32,6 +32,8 @@ class SplObjectMap extends SplObjectStorage implements ArrayAccess {
 }
 
 interface CLIWrapper {
+  const SKIP_VERIFY = 0x001;
+  const SKIP_BUILD = 0x002;
   public function getWorkingPath();
 }
 
